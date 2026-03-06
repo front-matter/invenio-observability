@@ -16,6 +16,59 @@ source = '''
 .project = .container_labels."com.docker.compose.project" ?? null
 .stream = .stream ?? "stdout"
 
+# Environment labeling (recommended): set a Docker label per service/container.
+# Examples (choose one convention and keep it consistent):
+#   environment=production
+#   environment=staging
+#   observability.environment=production
+#   observability.env=production
+env_value = .container_labels."environment"
+	?? .container_labels."observability.environment"
+	?? .container_labels."observability.env"
+	?? .container_labels."env"
+	?? ""
+env_raw = downcase(string!(env_value))
+
+.environment = if env_raw == "prod" || env_raw == "production" {
+	"production"
+} else if env_raw == "stage" || env_raw == "staging" {
+	"staging"
+} else {
+	"unknown"
+}
+
+# Classify infrastructure components with low label cardinality.
+# This helps filtering logs for Redis/Valkey, OpenSearch and Postgres even when
+# they run as separate services/containers.
+service_lc = downcase(string!(.service))
+image_lc = downcase(string!(.container_image) ?? "")
+container_lc = downcase(string!(.container))
+
+# InvenioRDM workload role (Coolify-style container names)
+.role = if starts_with(container_lc, "web-") {
+	"web"
+} else if starts_with(container_lc, "worker-") {
+	"worker"
+} else {
+	"other"
+}
+
+
+
+.component = if contains(service_lc, "traefik") || contains(image_lc, "traefik") || service_lc == "coolify-proxy" || container_lc == "coolify-proxy" {
+	"traefik"
+} else if contains(service_lc, "redis") || contains(service_lc, "valkey") || starts_with(container_lc, "redis-") || starts_with(container_lc, "valkey-") || contains(image_lc, "redis") || contains(image_lc, "valkey") {
+	"redis"
+} else if contains(service_lc, "opensearch") || starts_with(container_lc, "opensearch-") || contains(image_lc, "opensearch") {
+	"opensearch"
+} else if contains(service_lc, "postgres") || starts_with(container_lc, "postgres-") || contains(image_lc, "postgres") {
+	"postgres"
+} else if starts_with(container_lc, "web-") || starts_with(container_lc, "worker-") {
+	"inveniordm"
+} else {
+	"other"
+}
+
 # Default: use Compose project name when available
 .app = .project ?? "invenio-rdm"
 '''
@@ -28,6 +81,9 @@ encoding.codec = "json"
 
 [sinks.loki.labels]
 app = "{{ app }}"
+component = "{{ component }}"
+environment = "{{ environment }}"
+role = "{{ role }}"
 service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
