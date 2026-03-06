@@ -56,6 +56,9 @@ services:
       - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=Admin
 
+      # Grafana 12 Drilldown apps are shipped as plugins.
+      - GF_PLUGINS_PREINSTALL=grafana-lokiexplore-app,grafana-metricsdrilldown-app
+
       # Provide KEYCLOAK_PROVIDER_DOMAIN without a trailing slash, e.g. https://sso.example.org
 
       - KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}
