@@ -4,7 +4,7 @@
 version: '3.9'
 services:
   loki:
-    image: 'grafana/loki:2.9.6'
+    image: 'grafana/loki:2.9.17'
     container_name: loki
     command: '-config.file=/etc/loki/loki-config.yaml'
     networks:
@@ -24,13 +24,9 @@ services:
       retries: 5
       start_period: 20s
   grafana:
-    image: 'grafana/grafana:11.0.0'
+    image: 'grafana/grafana:12.4.0'
     container_name: grafana
     environment:
-      # initial admin credentials      
-      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}
-
       # use Postgres backend
       - GF_DATABASE_TYPE=postgres
       - GF_DATABASE_NAME=grafana
@@ -41,12 +37,19 @@ services:
       # enable SMTP for notifications
       - GF_SMTP_ENABLED=${GF_SMTP_ENABLED:-true}
       - 'GF_SMTP_HOST=${GF_SMTP_HOST:-}'
-      - "GF_SMTP_USER=${GF_SMTP_USER:-}'"
-      - "GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD:-}'"
-      - "GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-}'"
+      - 'GF_SMTP_USER=${GF_SMTP_USER:-}'
+      - 'GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD:-}'
+      - 'GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-}'
       - 'GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-}'
 
-      # enable login via Keycloak OIDC
+      # enable local login for admin user and basic auth   
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+
+      # enable login via Keycloak OIDC and disable local login form & basic auth
       - GF_AUTH_GENERIC_OAUTH_ENABLED=${GF_AUTH_GENERIC_OAUTH_ENABLED:-true}
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid,email,profile
       - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
@@ -59,6 +62,7 @@ services:
       - 'GF_AUTH_GENERIC_OAUTH_AUTH_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/auth'
       - 'GF_AUTH_GENERIC_OAUTH_TOKEN_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/token'
       - 'GF_AUTH_GENERIC_OAUTH_API_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/userinfo'
+      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-}
     volumes:
       - '/data/coolify/services/grafana/grafana-data:/var/lib/grafana'
     networks:
@@ -77,7 +81,7 @@ services:
       retries: 5
       start_period: 30s
   vector:
-    image: 'timberio/vector:0.38.0-alpine'
+    image: 'timberio/vector:0.53.0-alpine'
     container_name: vector
     volumes:
       - '/data/coolify/services/vector/vector.toml:/etc/vector/vector.toml:ro'
