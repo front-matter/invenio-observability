@@ -12,9 +12,9 @@ This stack uses bind mounts under `/data/coolify/services/...`. Make sure the ho
 
 Container default users:
 
-- Loki (`grafana/loki:2.9.6`): UID/GID `10001:10001`
-- Grafana (`grafana/grafana:11.0.0`): UID/GID `472:0`
-- Vector (`timberio/vector:0.38.0-alpine`): runs as `root` by default (needed for `/var/run/docker.sock` in this setup)
+- Loki (`grafana/loki:2.9.17`): UID/GID `10001:10001`
+- Grafana (`grafana/grafana:12.4.0`): UID/GID `472:0`
+- Vector (`timberio/vector:0.53.0-alpine`): runs as `root` by default (needed for `/var/run/docker.sock` in this setup)
 
 Create directories and apply ownership/permissions:
 
@@ -39,3 +39,19 @@ sudo chmod -R u+rwX /data/coolify/services/grafana/grafana-data
 # Vector config (read-only inside the container)
 sudo chmod 644 /data/coolify/services/vector/vector.toml
 ```
+
+## Grafana dashboard (logs)
+
+This repository includes an importable dashboard JSON for exploring logs in Loki using the labels produced by `vector.toml`.
+
+File:
+
+- `dashboards/inveniordm-logs.json`
+
+Import steps:
+
+1. In Grafana go to **Dashboards** → **New** → **Import**
+2. Upload `dashboards/inveniordm-logs.json`
+3. When prompted, select your **Loki** data source
+
+The dashboard provides variables for `app`, `environment`, `component`, `role`, `level`, `service`, `container`, and `stream`.
