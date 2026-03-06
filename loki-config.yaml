@@ -28,6 +28,7 @@ schema_config:
 limits_config:
   # Keep logs for 30 days
   retention_period: 720h
+  volume_enabled: true
 
 storage_config:
   boltdb_shipper:
