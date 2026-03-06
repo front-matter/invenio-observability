@@ -1,0 +1,33 @@
+# stored under /data/coolify/services/vector
+
+[sources.docker_logs]
+type = "docker_logs"
+
+# Prevent the stack from ingesting its own logs
+exclude_containers = ["vector", "loki", "grafana"]
+
+[transforms.normalize]
+type = "remap"
+inputs = ["docker_logs"]
+
+source = '''
+.container = replace!(.container_name, "/", "")
+.service = .container_labels."com.docker.compose.service" ?? .container
+.project = .container_labels."com.docker.compose.project" ?? null
+.stream = .stream ?? "stdout"
+
+# Default: use Compose project name when available
+.app = .project ?? "invenio-rdm"
+'''
+
+[sinks.loki]
+type = "loki"
+inputs = ["normalize"]
+endpoint = "http://loki:3100"
+encoding.codec = "json"
+
+[sinks.loki.labels]
+app = "{{ app }}"
+service = "{{ service }}"
+container = "{{ container }}"
+stream = "{{ stream }}"
