@@ -69,6 +69,48 @@ container_lc = downcase(string!(.container))
 	"other"
 }
 
+# Detect log level (low cardinality). Works for common formats:
+# - Traefik: level=info
+# - OpenSearch: [..][INFO ]
+# - Postgres: FATAL:, ERROR:, WARNING:
+# - JSON logs: {"level":"info"}
+msg = string!(.message ?? .log ?? "")
+level_raw = null
+
+if is_string(.level) {
+	level_raw = .level
+} else if is_object(.log) && is_string(.log.level) {
+	level_raw = .log.level
+} else {
+	parsed = parse_regex(msg, r'(?i)\blevel=(?P<level>trace|debug|info|warn|warning|error|fatal|panic)\b') ?? null
+	if parsed != null {
+		level_raw = parsed.level
+	} else {
+		parsed = parse_regex(msg, r'(?i)^\[[^\]]+\]\[(?P<level>trace|debug|info|warn|warning|error|fatal)\s*\]') ?? null
+		if parsed != null {
+			level_raw = parsed.level
+		} else {
+			parsed = parse_regex(msg, r'(?i)\b(?P<level>log|info|notice|warning|error|fatal|panic):') ?? null
+			if parsed != null {
+				level_raw = parsed.level
+			}
+		}
+	}
+}
+
+level_norm = downcase(string!(level_raw ?? ""))
+.level = if level_norm == "warning" || level_norm == "warn" {
+	"warn"
+} else if level_norm == "notice" {
+	"info"
+} else if level_norm == "panic" {
+	"fatal"
+} else if level_norm == "trace" || level_norm == "debug" || level_norm == "info" || level_norm == "error" || level_norm == "fatal" {
+	level_norm
+} else {
+	"unknown"
+}
+
 # Default: use Compose project name when available
 .app = .project ?? "invenio-rdm"
 '''
@@ -83,6 +125,7 @@ encoding.codec = "json"
 app = "{{ app }}"
 component = "{{ component }}"
 environment = "{{ environment }}"
+level = "{{ level }}"
 role = "{{ role }}"
 service = "{{ service }}"
 container = "{{ container }}"
