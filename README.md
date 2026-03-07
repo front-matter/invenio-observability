@@ -47,19 +47,28 @@ This repository includes an importable dashboard JSON for exploring logs in Loki
 File:
 
 - `dashboards/inveniordm-logs.json`
+- `dashboards/inveniordm-requests.json`
 
 Import steps:
 
 1. In Grafana go to **Dashboards** → **New** → **Import**
-2. Upload `dashboards/inveniordm-logs.json`
+2. Upload `dashboards/inveniordm-logs.json` (Services) or `dashboards/inveniordm-requests.json` (Requests)
 3. When prompted, select your **Loki** data source
 
-The dashboard provides variables for `app`, `environment`, `component`, `role`, `level`, `service`, `container`, and `stream`.
+The dashboard provides variables for `app`, `environment`, `component`, `level`, `service`, `container`, and `stream`.
 
 Notes:
 
 - The `Search` variable is treated as a regex (LogQL `|~`). Default is `.*` (show all logs). For a simple “contains” filter you can usually just type a word like `error`.
 - Loki requires at least one non-empty-compatible matcher in the selector; therefore the `app` variable uses `.+` for “All”.
+
+## Log labels and levels
+
+- `vector.toml` extracts `service`, `app` and `environment` from Docker labels. In some environments (e.g. Coolify), labels are exposed as `.label` instead of `.container_labels`.
+- InvenioRDM workloads are split into `component=inveniordm-web` and `component=inveniordm-worker` (no separate `role` label).
+- For HTTP access logs without an explicit log level, Vector infers `level` from the HTTP status code (2xx/3xx → `info`, 4xx → `warn`, 5xx → `error`).
+- For common HTTP access log lines, Vector also extracts an optional `.user_agent` field (kept as a log field, not a Loki label). In LogQL you can filter it like: `| json | user_agent=~"SentryUptimeBot.*"`.
+- Vector extracts the HTTP method into `.http_method` (e.g. `get`, `post`). Filter example: `| json | http_method="post"`.
 
 ## Grafana provisioning (recommended)
 

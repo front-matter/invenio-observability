@@ -138,12 +138,12 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (component) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\", component!=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum(rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\", component=\"inveniordm-web\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Service log rate by component",
+      "title": "Request rate",
       "type": "timeseries"
     },
     {
@@ -227,12 +227,12 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", service=~\"${service:regex}\", component!=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum by (level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", service=~\"${service:regex}\", component=\"inveniordm-web\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Service log rate by level",
+      "title": "Request rate by level",
       "type": "timeseries"
     },
     {
@@ -265,12 +265,12 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component!=\"inveniordm-web\"} | json | line_format \"{{.environment}}\t{{.component}}\t{{.level}}\t{{.message}}\" |~ \"$search\"",
+          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component=\"inveniordm-web\"} | json | line_format \"{{.environment}}\t{{.level}}\t{{if .http_status}}{{.http_status}}{{else}}-{{end}}\t{{if .user_agent_product}}{{.user_agent_product}}{{else if .user_agent}}{{.user_agent}}{{else}}-{{end}}\t{{if .http_target}}{{.http_target}}{{else}}-{{end}}\" |~ \"$search\"",
           "queryType": "range",
           "refId": "A"
         }
       ],
-      "title": "Services",
+      "title": "Requests",
       "type": "logs"
     }
   ],
@@ -278,7 +278,7 @@
   "schemaVersion": 39,
   "tags": [
     "inveniordm",
-    "logs",
+    "requests",
     "loki",
     "vector"
   ],
@@ -291,8 +291,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(app)",
-        "definition": "label_values(app)",
+        "query": "label_values({component=\"inveniordm-web\"}, app)",
+        "definition": "label_values({component=\"inveniordm-web\"}, app)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".+",
@@ -311,28 +311,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(environment)",
-        "definition": "label_values(environment)",
-        "hide": 0,
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": true,
-        "refresh": 2,
-        "sort": 1,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        }
-      },
-      {
-        "name": "component",
-        "type": "query",
-        "datasource": {
-          "type": "loki",
-          "uid": "loki"
-        },
-        "query": "label_values(component)",
-        "definition": "label_values(component)",
+        "query": "label_values({component=\"inveniordm-web\"}, environment)",
+        "definition": "label_values({component=\"inveniordm-web\"}, environment)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -351,8 +331,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(level)",
-        "definition": "label_values(level)",
+        "query": "label_values({component=\"inveniordm-web\"}, level)",
+        "definition": "label_values({component=\"inveniordm-web\"}, level)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -371,8 +351,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(service)",
-        "definition": "label_values(service)",
+        "query": "label_values({component=\"inveniordm-web\"}, service)",
+        "definition": "label_values({component=\"inveniordm-web\"}, service)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -391,8 +371,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(container)",
-        "definition": "label_values(container)",
+        "query": "label_values({component=\"inveniordm-web\"}, container)",
+        "definition": "label_values({component=\"inveniordm-web\"}, container)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -411,8 +391,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values(stream)",
-        "definition": "label_values(stream)",
+        "query": "label_values({component=\"inveniordm-web\"}, stream)",
+        "definition": "label_values({component=\"inveniordm-web\"}, stream)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -454,7 +434,7 @@
     ]
   },
   "timezone": "",
-  "title": "InvenioRDM Services",
-  "uid": "inveniordm-logs",
-  "version": 15
+  "title": "InvenioRDM Requests",
+  "uid": "inveniordm-requests",
+  "version": 3
 }

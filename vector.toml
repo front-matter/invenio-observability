@@ -102,21 +102,34 @@ container_name = string!(.container_name)
 .container = replace(container_name, "/", "")
 
 # Keep only selected Docker labels to control label cardinality.
+# NOTE: Depending on the runtime (e.g. Coolify), labels may be exposed as
+# `.label` instead of `.container_labels`.
+labels_src = {}
+if is_object(.container_labels) && (length(.container_labels) ?? 0) > 0 {
+	labels_src = .container_labels
+} else if is_object(.label) && (length(.label) ?? 0) > 0 {
+	labels_src = .label
+}
+
 labels_out = {}
-if is_object(.container_labels) {
-	labels_out."com.docker.compose.service" = .container_labels."com.docker.compose.service"
-	labels_out."com.docker.compose.project" = .container_labels."com.docker.compose.project"
-	labels_out."environment" = .container_labels."environment"
-	labels_out."observability.environment" = .container_labels."observability.environment"
-	labels_out."observability.env" = .container_labels."observability.env"
-	labels_out."env" = .container_labels."env"
+if is_object(labels_src) {
+	labels_out."com.docker.compose.service" = labels_src."com.docker.compose.service"
+	labels_out."com.docker.compose.project" = labels_src."com.docker.compose.project"
+	labels_out."coolify.projectName" = labels_src."coolify.projectName"
+	labels_out."coolify.environmentName" = labels_src."coolify.environmentName"
+	labels_out."environment" = labels_src."environment"
+	labels_out."observability.environment" = labels_src."observability.environment"
+	labels_out."observability.env" = labels_src."observability.env"
+	labels_out."env" = labels_src."env"
 }
 .container_labels = labels_out
 
 compose_service = .container_labels."com.docker.compose.service"
 .service = if is_null(compose_service) { .container } else { compose_service }
 
-.project = .container_labels."com.docker.compose.project"
+compose_project = .container_labels."com.docker.compose.project"
+coolify_project = .container_labels."coolify.projectName"
+.project = if !is_null(compose_project) { compose_project } else { coolify_project }
 
 stream_value = .stream
 .stream = if is_null(stream_value) { "stdout" } else { stream_value }
@@ -131,6 +144,7 @@ env_value = .container_labels."environment"
 if is_null(env_value) { env_value = .container_labels."observability.environment" }
 if is_null(env_value) { env_value = .container_labels."observability.env" }
 if is_null(env_value) { env_value = .container_labels."env" }
+if is_null(env_value) { env_value = .container_labels."coolify.environmentName" }
 
 env_raw = ""
 if is_string(env_value) { env_raw = downcase(string!(env_value)) }
@@ -155,18 +169,7 @@ if image_raw == "" && is_object(.container) && is_string(.container.image) { ima
 if image_raw == "" && is_object(.docker) && is_string(.docker.image) { image_raw = .docker.image }
 
 image_lc = downcase(string!(image_raw))
-container_lc = downcase(string!(.container))
-
-# InvenioRDM workload role (Coolify-style container names)
-.role = if starts_with(container_lc, "web-") {
-	"web"
-} else if starts_with(container_lc, "worker-") {
-	"worker"
-} else {
-	"other"
-}
-
-
+container_lc = downcase(.container)
 
 .component = if contains(service_lc, "traefik") || contains(image_lc, "traefik") || service_lc == "coolify-proxy" || container_lc == "coolify-proxy" {
 	"traefik"
@@ -176,8 +179,10 @@ container_lc = downcase(string!(.container))
 	"opensearch"
 } else if contains(service_lc, "postgres") || starts_with(container_lc, "postgres-") || contains(image_lc, "postgres") {
 	"postgres"
-} else if starts_with(container_lc, "web-") || starts_with(container_lc, "worker-") {
-	"inveniordm"
+} else if starts_with(container_lc, "web-") {
+	"inveniordm-web"
+} else if starts_with(container_lc, "worker-") {
+	"inveniordm-worker"
 } else {
 	"other"
 }
@@ -195,6 +200,81 @@ msg = if is_string(.message) {
 	""
 }
 level_raw = null
+
+# Parse common HTTP access logs (combined format) to structured fields.
+# Example:
+# 172.18.0.2 - - [07/Mar/2026:13:00:41 +0000] "GET /static/favicon.ico HTTP/1.1" 200 0 "https://example.org/" "Mozilla/5.0 ..."
+if msg != "" && .component == "inveniordm-web" {
+	access = parse_regex(msg, r'^\S+\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/(?P<httpver>[^\"]+)"\s+(?P<status>\d{3})\s+(?P<bytes>\d+|-)\s+"(?P<referer>[^\"]*)"\s+"(?P<ua>[^\"]*)"') ?? null
+	if access != null {
+		# Method / status / referer / UA
+		if !exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "") {
+			.http_method = downcase(string!(access.method))
+		}
+		status_code = to_int(access.status) ?? null
+		if !is_null(status_code) {
+			.http_status = status_code
+		}
+		if (!exists(.http_target) || is_null(.http_target) || (is_string(.http_target) && string!(.http_target) == "")) {
+			.http_target = string!(access.target)
+		}
+		referer_raw = string!(access.referer)
+		if referer_raw != "" && referer_raw != "-" {
+			.http_referer = referer_raw
+		}
+		ua_raw = string!(access.ua)
+		if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) {
+			if ua_raw != "" && ua_raw != "-" {
+				.user_agent = ua_raw
+			}
+		}
+
+		# For dashboards, treat "url" as the request path (target), not the referer.
+		if (!exists(.http_url) || is_null(.http_url) || (is_string(.http_url) && string!(.http_url) == "")) {
+			if exists(.http_target) && is_string(.http_target) {
+				.http_url = .http_target
+			} else if exists(.http_referer) && is_string(.http_referer) {
+				.http_url = .http_referer
+			}
+		}
+
+		# Extract a compact UA "product" token (first token before space).
+		ua_for_product = null
+		if exists(.user_agent) && is_string(.user_agent) { ua_for_product = .user_agent }
+		if is_string(ua_for_product) {
+			# Prefer the last product/version token (greedy match), e.g. PingdomPageSpeed/1.0.
+			# Ignore anything inside parentheses by only considering the UA prefix before the first "(".
+			ua_prefix = string!(ua_for_product)
+			ua_prefix_match = parse_regex(ua_prefix, r'^(?P<pre>[^(]*)') ?? null
+			if ua_prefix_match != null { ua_prefix = string!(ua_prefix_match.pre) }
+			ua_prod_match = parse_regex(ua_prefix, r'.*(?P<prod>[A-Za-z][A-Za-z0-9._-]+\/[0-9][0-9A-Za-z._-]*)') ?? null
+			if ua_prod_match != null {
+				.user_agent_product = string!(ua_prod_match.prod)
+			}
+		}
+	}
+}
+
+# Extract optional user-agent from common HTTP access log lines, e.g.
+# 172.18.0.2 - - [..] "GET / HTTP/1.1" 200 26402 "-" "SentryUptimeBot/1.0 ..."
+# Keep it as a field (not a Loki label) to avoid label-cardinality explosion.
+if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) && msg != "" && .component == "inveniordm-web" {
+	ua_match = parse_regex(msg, r'"[A-Z]+\s+[^\s]+\s+HTTP\/[^\"]+"\s+\d{3}\s+\d+\s+"[^\"]*"\s+"(?P<ua>[^\"]*)"\s*$') ?? null
+	if ua_match != null {
+		ua_raw = string!(ua_match.ua)
+		if ua_raw != "" && ua_raw != "-" {
+			.user_agent = ua_raw
+		}
+	}
+}
+
+# Extract HTTP verb from access logs (GET/POST/PUT/...), normalized to lowercase.
+if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) && msg != "" && .component == "inveniordm-web" {
+	method_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+[^\s]+\s+HTTP\/[^\"]+"') ?? null
+	if method_match != null {
+		.http_method = downcase(string!(method_match.method))
+	}
+}
 
 if is_string(.level) {
 	level_raw = .level
@@ -235,6 +315,32 @@ if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
 	"unknown"
 }
 
+# Access logs often don't contain an explicit level; infer it from HTTP status.
+if .level == "unknown" && .component == "inveniordm-web" {
+	status_code = null
+	if exists(.http_status) {
+		status_code = to_int(.http_status) ?? null
+	} else {
+		status_match = parse_regex(msg, r'"\s+(?P<status>\d{3})\s+') ?? null
+		if status_match != null {
+			status_code = to_int(status_match.status) ?? null
+			if !is_null(status_code) { .http_status = status_code }
+		}
+	}
+	if !is_null(status_code) {
+		status_code_int = to_int(status_code)
+		.level = if status_code_int >= 500 {
+			"error"
+		} else if status_code_int >= 400 {
+			"warn"
+		} else if status_code_int > 0 {
+			"info"
+		} else {
+			"unknown"
+		}
+	}
+}
+
 # Default: use Compose project name when available
 app_raw = .project
 .app = if is_string(app_raw) && app_raw != "" {
@@ -260,7 +366,6 @@ app = "{{ app }}"
 component = "{{ component }}"
 environment = "{{ environment }}"
 level = "{{ level }}"
-role = "{{ role }}"
 service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
