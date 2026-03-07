@@ -84,3 +84,30 @@ to:
 - `/data/coolify/services/grafana/provisioning:/etc/grafana/provisioning:ro`
 
 4. Restart Grafana.
+
+## Alerting: errors in logs
+
+This repository includes a provisioned Grafana alert rule that triggers when Loki receives error-like log lines (regex matches `error|exception|traceback|fatal|panic`) over the last 5 minutes.
+
+File:
+
+- [grafana/provisioning/alerting/inveniordm-errors.yaml](grafana/provisioning/alerting/inveniordm-errors.yaml)
+
+Enable it:
+
+1. Create on the host:
+
+```bash
+sudo mkdir -p /data/coolify/services/grafana/provisioning/alerting
+```
+
+2. Copy the repo file to:
+
+- `/data/coolify/services/grafana/provisioning/alerting/inveniordm-errors.yaml`
+
+3. Restart Grafana.
+
+Notes:
+
+- You still need to configure a **Contact point** and **Notification policy** in Grafana for alerts to actually notify (SMTP env vars only enable sending; they don’t define recipients).
+- The provisioned rule will show up under **Alerting** → **Alert rules**, in the **General** folder.
