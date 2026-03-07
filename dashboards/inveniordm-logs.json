@@ -60,7 +60,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "${DS_LOKI}"
+        "uid": "loki"
       },
       "fieldConfig": {
         "defaults": {
@@ -135,10 +135,10 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_LOKI}"
+            "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (component) (rate({app=~\"$app\", environment=~\"$environment\", component=~\"$component\", role=~\"$role\", level=~\"$level\", service=~\"$service\"}[$__interval]))",
+          "expr": "sum by (component) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", role=~\"${role:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -149,7 +149,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "${DS_LOKI}"
+        "uid": "loki"
       },
       "fieldConfig": {
         "defaults": {
@@ -224,10 +224,10 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_LOKI}"
+            "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (level) (rate({app=~\"$app\", environment=~\"$environment\", component=~\"$component\", role=~\"$role\", service=~\"$service\"}[$__interval]))",
+          "expr": "sum by (level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", role=~\"${role:regex}\", service=~\"${service:regex}\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -238,7 +238,7 @@
     {
       "datasource": {
         "type": "loki",
-        "uid": "${DS_LOKI}"
+        "uid": "loki"
       },
       "gridPos": {
         "h": 14,
@@ -261,10 +261,10 @@
         {
           "datasource": {
             "type": "loki",
-            "uid": "${DS_LOKI}"
+            "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{app=~\"$app\", environment=~\"$environment\", component=~\"$component\", role=~\"$role\", level=~\"$level\", service=~\"$service\", container=~\"$container\", stream=~\"$stream\"} |= \"$search\"",
+          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", role=~\"${role:regex}\", level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\"} |~ \"$search\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -288,23 +288,27 @@
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(app)",
         "definition": "label_values(app)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": ".+",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "environment",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(environment)",
         "definition": "label_values(environment)",
@@ -313,14 +317,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "component",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(component)",
         "definition": "label_values(component)",
@@ -329,14 +337,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "role",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(role)",
         "definition": "label_values(role)",
@@ -345,14 +357,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "level",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(level)",
         "definition": "label_values(level)",
@@ -361,14 +377,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "service",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(service)",
         "definition": "label_values(service)",
@@ -377,14 +397,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "container",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(container)",
         "definition": "label_values(container)",
@@ -393,14 +417,18 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "stream",
         "type": "query",
         "datasource": {
           "type": "loki",
-          "uid": "${DS_LOKI}"
+          "uid": "loki"
         },
         "query": "label_values(stream)",
         "definition": "label_values(stream)",
@@ -409,23 +437,27 @@
         "allValue": ".*",
         "multi": true,
         "refresh": 2,
-        "sort": 1
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
       },
       {
         "name": "search",
         "type": "textbox",
-        "label": "Search",
+        "label": "Search (regex)",
         "hide": 0,
-        "query": "",
+        "query": ".*",
         "current": {
-          "text": "",
-          "value": ""
+          "text": ".*",
+          "value": ".*"
         }
       }
     ]
   },
   "time": {
-    "from": "now-6h",
+    "from": "now-30d",
     "to": "now"
   },
   "timepicker": {
@@ -441,7 +473,7 @@
     ]
   },
   "timezone": "",
-  "title": "InvenioRDM Logs (Vector + Loki)",
-  "uid": "inveniordm-logs-vector-loki",
-  "version": 1
+  "title": "InvenioRDM Logs",
+  "uid": "inveniordm-logs",
+  "version": 5
 }

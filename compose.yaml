@@ -71,6 +71,7 @@ services:
       - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-}
     volumes:
       - '/data/coolify/services/grafana/grafana-data:/var/lib/grafana'
+      - '/data/coolify/services/grafana/provisioning:/etc/grafana/provisioning:ro'
     networks:
       - coolify
     ports:

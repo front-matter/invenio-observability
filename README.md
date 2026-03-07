@@ -55,3 +55,32 @@ Import steps:
 3. When prompted, select your **Loki** data source
 
 The dashboard provides variables for `app`, `environment`, `component`, `role`, `level`, `service`, `container`, and `stream`.
+
+Notes:
+
+- The `Search` variable is treated as a regex (LogQL `|~`). Default is `.*` (show all logs). For a simple “contains” filter you can usually just type a word like `error`.
+- Loki requires at least one non-empty-compatible matcher in the selector; therefore the `app` variable uses `.+` for “All”.
+
+## Grafana provisioning (recommended)
+
+To avoid Grafana pointing at the wrong Loki URL (a common reason for “no results” in Explore), provision the Loki datasource.
+
+1. Create on the host:
+
+```bash
+sudo mkdir -p /data/coolify/services/grafana/provisioning/datasources
+```
+
+2. Copy the repo file:
+
+- [grafana/provisioning/datasources/loki.yaml](grafana/provisioning/datasources/loki.yaml)
+
+to:
+
+- `/data/coolify/services/grafana/provisioning/datasources/loki.yaml`
+
+3. Ensure your Grafana service has this volume mount (see [compose.yaml](compose.yaml)):
+
+- `/data/coolify/services/grafana/provisioning:/etc/grafana/provisioning:ro`
+
+4. Restart Grafana.
