@@ -24,14 +24,14 @@
     },
     {
       "type": "panel",
-      "id": "logs",
-      "name": "Logs",
+      "id": "geomap",
+      "name": "Geomap",
       "version": ""
     },
     {
       "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
+      "id": "logs",
+      "name": "Logs",
       "version": ""
     }
   ],
@@ -64,162 +64,73 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
             "hideFrom": {
               "legend": false,
               "tooltip": false,
               "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "ops"
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "basemap": {
+          "config": {},
+          "name": "Layer 0",
+          "type": "default"
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "loki"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", country=~\"${country:regex}\", component=~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Request rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "loki"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 4,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
+        "controls": {
+          "mouseWheelZoom": true,
+          "showAttribution": true,
+          "showDebug": false,
+          "showMeasure": false,
+          "showScale": false,
+          "showZoom": true
+        },
+        "layers": [
+          {
+            "config": {
+              "color": {
+                "fixed": "dark-green"
+              },
+              "fillOpacity": 0.4,
+              "shape": "circle",
+              "showLegend": true,
+              "size": {
+                "field": "Value",
+                "fixed": 5,
+                "max": 18,
+                "min": 3
               }
-            ]
-          },
-          "unit": "ops"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 24,
-        "x": 0,
-        "y": 8
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
+            },
+            "location": {
+              "mode": "auto"
+            },
+            "name": "Requests",
+            "type": "markers"
+          }
+        ],
         "tooltip": {
-          "mode": "single",
-          "sort": "none"
+          "mode": "details"
+        },
+        "view": {
+          "allLayers": true,
+          "id": "coords",
+          "lat": 20,
+          "lon": 0,
+          "shared": false,
+          "zoom": 1.5
         }
       },
+      "pluginVersion": "12.4.0",
       "targets": [
         {
           "datasource": {
@@ -227,13 +138,13 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", country=~\"${country:regex}\", component=~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
+          "expr": "sum by (country, latitude, longitude) (count_over_time({app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", country=~\"${country:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component=~\"web-.*\"} | json | __error__=\"\" | latitude != \"\" | longitude != \"\" [$__range]))",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
-      "title": "Request rate by level",
-      "type": "timeseries"
+      "title": "Requests geolocation",
+      "type": "geomap"
     },
     {
       "datasource": {
@@ -244,9 +155,9 @@
         "h": 14,
         "w": 24,
         "x": 0,
-        "y": 16
+        "y": 12
       },
-      "id": 3,
+      "id": 2,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
@@ -279,6 +190,7 @@
   "tags": [
     "inveniordm",
     "requests",
+    "geo",
     "loki",
     "vector"
   ],
@@ -435,7 +347,7 @@
     ]
   },
   "timezone": "",
-  "title": "InvenioRDM Requests",
-  "uid": "inveniordm-requests",
-  "version": 6
+  "title": "InvenioRDM Requests Geo",
+  "uid": "inveniordm-requests-geo",
+  "version": 1
 }

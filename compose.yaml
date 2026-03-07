@@ -94,6 +94,7 @@ services:
     user: "0:0"
     volumes:
       - '/data/coolify/services/vector/vector.toml:/etc/vector/vector.toml:ro'
+      - '/data/coolify/services/geoip/GeoLite2-City.mmdb:/data/coolify/services/geoip/GeoLite2-City.mmdb:ro'
       - '/var/run/docker.sock:/var/run/docker.sock'
     networks:
       - coolify

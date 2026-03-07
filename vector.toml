@@ -58,6 +58,12 @@ multiline.mode = "halt_before"
 multiline.condition_pattern = '^\d{4}-\d{2}-\d{2}'
 multiline.timeout_ms = 1000
 
+# -------- GeoIP database --------
+
+[enrichment_tables.geoip]
+type = "geoip"
+path = "/data/coolify/services/geoip/GeoLite2-City.mmdb"
+
 [sources.internal_metrics]
 type = "internal_metrics"
 
@@ -385,9 +391,45 @@ app_raw = .project
 }
 '''
 
+[transforms.geoip_enrich]
+type = "remap"
+inputs = ["normalize"]
+
+source = '''
+# GeoIP enrichment (safe): only for web-* components and only when we have a
+# plausible IPv4 client IP.
+component = to_string(.component) ?? ""
+client_ip = to_string(.client_ip) ?? ""
+
+if starts_with(component, "web-") {
+	# Ensure the label exists for all web logs so Grafana variables like
+	# `country=~".*"` don't drop events that have no GeoIP match.
+	if (!exists(.country) || is_null(.country) || (is_string(.country) && string!(.country) == "")) {
+		.country = "unknown"
+	}
+
+	if client_ip != "" {
+	ip_match = parse_regex(client_ip, r'^(?P<ip>\d{1,3}(?:\.\d{1,3}){3})$') ?? null
+	if ip_match != null {
+		geo = get_enrichment_table_record("geoip", {"ip": ip_match.ip}) ?? null
+		if geo != null {
+			country = to_string(geo.country_name) ?? ""
+			city = to_string(geo.city_name) ?? ""
+			lat = to_float(geo.latitude) ?? null
+			lon = to_float(geo.longitude) ?? null
+			if country != "" { .country = country }
+			if city != "" { .city = city }
+			if lat != null { .latitude = lat }
+			if lon != null { .longitude = lon }
+		}
+	}
+	}
+}
+'''
+
 [sinks.loki]
 type = "loki"
-inputs = ["normalize"]
+inputs = ["geoip_enrich"]
 endpoint = "http://loki:3100"
 encoding.codec = "json"
 encoding.except_fields = ["severity"]
@@ -400,3 +442,4 @@ log_level = "{{ severity }}"
 service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
+country = "{{ country }}"
