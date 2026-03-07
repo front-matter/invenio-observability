@@ -138,7 +138,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum(rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", severity=~\"${level:regex}\", component=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum(rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", component=\"inveniordm-web\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -227,7 +227,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (severity) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=\"inveniordm-web\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -265,7 +265,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", severity=~\"${level:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component=\"inveniordm-web\"} | label_drop severity | json | line_format \"{{if .http_status}}{{.http_status}}{{else}}-{{end}}\t{{if .http_target}}{{.http_target}}{{else}}-{{end}}\t{{if .user_agent_short}}{{.user_agent_short}}{{else if .user_agent}}{{.user_agent}}{{else}}-{{end}}\" |~ \"$search\"",
+          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component=\"inveniordm-web\"} |~ \"$search\" | json | line_format \"{{if .http_status}}{{.http_status}}{{else}}-{{end}}\t{{if .http_target}}{{.http_target}}{{else}}-{{end}}\t{{if .user_agent_short}}{{.user_agent_short}}{{else if .user_agent}}{{.user_agent}}{{else}}-{{end}}\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -331,8 +331,8 @@
           "type": "loki",
           "uid": "loki"
         },
-        "query": "label_values({component=\"inveniordm-web\"}, severity)",
-        "definition": "label_values({component=\"inveniordm-web\"}, severity)",
+        "query": "label_values({component=\"inveniordm-web\"}, log_level)",
+        "definition": "label_values({component=\"inveniordm-web\"}, log_level)",
         "hide": 0,
         "includeAll": true,
         "allValue": ".*",
@@ -389,10 +389,10 @@
         "type": "textbox",
         "label": "Search (regex)",
         "hide": 0,
-        "query": ".*",
+        "query": "",
         "current": {
-          "text": ".*",
-          "value": ".*"
+          "text": "",
+          "value": ""
         }
       }
     ]

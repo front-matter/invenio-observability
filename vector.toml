@@ -179,6 +179,8 @@ container_lc = downcase(.container)
 	"opensearch"
 } else if contains(service_lc, "postgres") || starts_with(container_lc, "postgres-") || contains(image_lc, "postgres") {
 	"postgres"
+} else if service_lc == "keycloak" || starts_with(container_lc, "keycloak-") || contains(image_lc, "keycloak") {
+	"keycloak"
 } else if starts_with(container_lc, "web-") {
 	"inveniordm-web"
 } else if starts_with(container_lc, "worker-") {
@@ -295,7 +297,7 @@ if is_string(.level) {
 
 level_norm = ""
 if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
-.level = if level_norm == "warning" || level_norm == "warn" {
+.severity = if level_norm == "warning" || level_norm == "warn" {
 	"warn"
 } else if level_norm == "notice" {
 	"info"
@@ -312,7 +314,7 @@ if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
 }
 
 # Access logs often don't contain an explicit level; infer it from HTTP status.
-if .level == "unknown" && .component == "inveniordm-web" {
+if .severity == "unknown" && .component == "inveniordm-web" {
 	status_code = null
 	if exists(.http_status) {
 		status_code = to_int(.http_status) ?? null
@@ -325,7 +327,7 @@ if .level == "unknown" && .component == "inveniordm-web" {
 	}
 	if !is_null(status_code) {
 		status_code_int = to_int(status_code)
-		.level = if status_code_int >= 500 {
+		.severity = if status_code_int >= 500 {
 			"error"
 		} else if status_code_int >= 400 {
 			"warn"
@@ -336,6 +338,10 @@ if .level == "unknown" && .component == "inveniordm-web" {
 		}
 	}
 }
+
+# Prevent Grafana from applying special log-level styling based on a JSON field
+# named `level`. We keep the computed value in `.severity` instead.
+if exists(.level) { del(.level) }
 
 # Default: use Compose project name when available
 app_raw = .project
@@ -351,6 +357,7 @@ type = "loki"
 inputs = ["normalize"]
 endpoint = "http://loki:3100"
 encoding.codec = "json"
+encoding.except_fields = ["severity"]
 
 [sinks.prometheus_exporter]
 type = "prometheus_exporter"
@@ -361,7 +368,7 @@ address = "127.0.0.1:9598"
 app = "{{ app }}"
 component = "{{ component }}"
 environment = "{{ environment }}"
-severity = "{{ level }}"
+log_level = "{{ severity }}"
 service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
