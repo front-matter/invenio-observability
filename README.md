@@ -55,7 +55,9 @@ Import steps:
 2. Upload `dashboards/inveniordm-logs.json` (Services) or `dashboards/inveniordm-requests.json` (Requests)
 3. When prompted, select your **Loki** data source
 
-The dashboard provides variables for `app`, `environment`, `component`, `level`, `service`, `container`, and `stream`.
+The dashboards provide variables for `app`, `environment`, `component`, `level`, `container`, and `stream`.
+
+Note: the dashboard variable is named `level`, but the underlying Loki stream label is `severity` (Vector computes `.level` and maps it to the `severity` label when sending to Loki).
 
 Notes:
 
@@ -66,7 +68,7 @@ Notes:
 
 - `vector.toml` extracts `service`, `app` and `environment` from Docker labels. In some environments (e.g. Coolify), labels are exposed as `.label` instead of `.container_labels`.
 - InvenioRDM workloads are split into `component=inveniordm-web` and `component=inveniordm-worker` (no separate `role` label).
-- For HTTP access logs without an explicit log level, Vector infers `level` from the HTTP status code (2xx/3xx → `info`, 4xx → `warn`, 5xx → `error`).
+- For HTTP access logs without an explicit log level, Vector infers `.level` from the HTTP status code (2xx/3xx → `info`, 4xx → `warn`, 5xx → `error`). This is sent to Loki as the `severity` label.
 - For common HTTP access log lines, Vector also extracts an optional `.user_agent` field (kept as a log field, not a Loki label). In LogQL you can filter it like: `| json | user_agent=~"SentryUptimeBot.*"`.
 - Vector extracts the HTTP method into `.http_method` (e.g. `get`, `post`). Filter example: `| json | http_method="post"`.
 

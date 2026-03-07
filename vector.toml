@@ -237,21 +237,6 @@ if msg != "" && .component == "inveniordm-web" {
 				.http_url = .http_referer
 			}
 		}
-
-		# Extract a compact UA "product" token (first token before space).
-		ua_for_product = null
-		if exists(.user_agent) && is_string(.user_agent) { ua_for_product = .user_agent }
-		if is_string(ua_for_product) {
-			# Prefer the last product/version token (greedy match), e.g. PingdomPageSpeed/1.0.
-			# Ignore anything inside parentheses by only considering the UA prefix before the first "(".
-			ua_prefix = string!(ua_for_product)
-			ua_prefix_match = parse_regex(ua_prefix, r'^(?P<pre>[^(]*)') ?? null
-			if ua_prefix_match != null { ua_prefix = string!(ua_prefix_match.pre) }
-			ua_prod_match = parse_regex(ua_prefix, r'.*(?P<prod>[A-Za-z][A-Za-z0-9._-]+\/[0-9][0-9A-Za-z._-]*)') ?? null
-			if ua_prod_match != null {
-				.user_agent_product = string!(ua_prod_match.prod)
-			}
-		}
 	}
 }
 
@@ -273,6 +258,17 @@ if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) &
 	method_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+[^\s]+\s+HTTP\/[^\"]+"') ?? null
 	if method_match != null {
 		.http_method = downcase(string!(method_match.method))
+	}
+}
+
+# Truncate user-agent for dashboard display.
+if .component == "inveniordm-web" && exists(.user_agent) && is_string(.user_agent) {
+	ua_full = string!(.user_agent)
+	if ua_full != "" {
+		ua_short_match = parse_regex(ua_full, r'^(?P<ua>.{0,40})') ?? null
+		if ua_short_match != null {
+			.user_agent_short = string!(ua_short_match.ua)
+		}
 	}
 }
 
@@ -365,7 +361,7 @@ address = "127.0.0.1:9598"
 app = "{{ app }}"
 component = "{{ component }}"
 environment = "{{ environment }}"
-level = "{{ level }}"
+severity = "{{ level }}"
 service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
