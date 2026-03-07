@@ -1,20 +1,125 @@
 # stored under /data/coolify/services/vector
 
+[api]
+enabled = true
+address = "127.0.0.1:8686"
+
 [sources.docker_logs]
 type = "docker_logs"
 
-# Prevent the stack from ingesting its own logs
-exclude_containers = ["vector", "loki", "grafana"]
+# Explicitly set the Docker endpoint. This avoids surprises if the runtime
+# injects a `DOCKER_HOST` env var pointing elsewhere.
+#
+# If you run rootless Docker, change this to your user socket, e.g.
+# `unix:///run/user/1000/docker.sock`, and mount that socket into the Vector
+# container.
+docker_host = "unix:///var/run/docker.sock"
+
+# Exclude sidecars and this observability stack itself.
+exclude_containers = [
+  # NOTE: `exclude_containers` uses prefix matching (not glob patterns).
+  # Excluding "sidecar" is useful when sidecars are named like "sidecar-...".
+  "sidecar",
+  "/sidecar",
+  "vector",
+  "/vector",
+  "vector-",
+  "/vector-",
+  "loki",
+  "/loki",
+  "loki-",
+  "/loki-",
+  "grafana",
+  "/grafana",
+  "grafana-",
+  "/grafana-",
+]
+
+# Reduce noise: only collect logs for the relevant workloads.
+# NOTE: `include_containers` uses prefix matching. If set, only matching
+# containers are collected (unless excluded above).
+include_containers = [
+  "web-",
+  "/web-",
+  "worker-",
+  "/worker-",
+  "coolify-proxy",
+  "/coolify-proxy",
+  "opensearch-",
+  "/opensearch-",
+  "valkey-",
+  "/valkey-",
+  "redis-",
+  "/redis-",
+  "postgres-",
+  "/postgres-",
+  "keycloak-",
+  "/keycloak-",
+]
+
+# IMPORTANT: `include_labels` on `docker_logs` is a *container filter* (expects
+# `key=value` matches). It is NOT a “keep only these labels” allow-list.
+#
+# To avoid accidentally filtering out all containers (and getting 0 events), we
+# do not set `include_labels` here. We prune `.container_labels` later in VRL
+# instead.
+
+# Merge Docker partial log frames automatically.
+auto_partial_merge = true
+
+# Multiline handling (example: lines start with an ISO date).
+multiline.start_pattern = '^\d{4}-\d{2}-\d{2}'
+multiline.mode = "halt_before"
+multiline.condition_pattern = '^\d{4}-\d{2}-\d{2}'
+multiline.timeout_ms = 1000
+
+[sources.internal_metrics]
+type = "internal_metrics"
+
+[transforms.keep_invenio_infra]
+type = "filter"
+inputs = ["docker_logs"]
+condition = '''
+container_name = string!(.container_name)
+container_lc = downcase(replace(container_name, "/", ""))
+image_raw = ""
+if is_string(.container_image) { image_raw = .container_image }
+if image_raw == "" && is_string(.image) { image_raw = .image }
+if image_raw == "" && is_object(.container) && is_string(.container.image) { image_raw = .container.image }
+if image_raw == "" && is_object(.docker) && is_string(.docker.image) { image_raw = .docker.image }
+
+image_lc = downcase(string!(image_raw))
+
+starts_with(container_lc, "web-") || starts_with(container_lc, "worker-") || container_lc == "coolify-proxy" || starts_with(container_lc, "opensearch-") || contains(image_lc, "opensearch") || starts_with(container_lc, "valkey-") || contains(image_lc, "valkey") || contains(image_lc, "redis") || contains(image_lc, "postgres") || starts_with(container_lc, "keycloak-") || contains(image_lc, "keycloak")
+'''
 
 [transforms.normalize]
 type = "remap"
-inputs = ["docker_logs"]
+inputs = ["keep_invenio_infra"]
 
 source = '''
-.container = replace!(.container_name, "/", "")
-.service = .container_labels."com.docker.compose.service" ?? .container
-.project = .container_labels."com.docker.compose.project" ?? null
-.stream = .stream ?? "stdout"
+container_name = string!(.container_name)
+.container = replace(container_name, "/", "")
+
+# Keep only selected Docker labels to control label cardinality.
+labels_out = {}
+if is_object(.container_labels) {
+	labels_out."com.docker.compose.service" = .container_labels."com.docker.compose.service"
+	labels_out."com.docker.compose.project" = .container_labels."com.docker.compose.project"
+	labels_out."environment" = .container_labels."environment"
+	labels_out."observability.environment" = .container_labels."observability.environment"
+	labels_out."observability.env" = .container_labels."observability.env"
+	labels_out."env" = .container_labels."env"
+}
+.container_labels = labels_out
+
+compose_service = .container_labels."com.docker.compose.service"
+.service = if is_null(compose_service) { .container } else { compose_service }
+
+.project = .container_labels."com.docker.compose.project"
+
+stream_value = .stream
+.stream = if is_null(stream_value) { "stdout" } else { stream_value }
 
 # Environment labeling (recommended): set a Docker label per service/container.
 # Examples (choose one convention and keep it consistent):
@@ -23,11 +128,12 @@ source = '''
 #   observability.environment=production
 #   observability.env=production
 env_value = .container_labels."environment"
-	?? .container_labels."observability.environment"
-	?? .container_labels."observability.env"
-	?? .container_labels."env"
-	?? ""
-env_raw = downcase(string!(env_value))
+if is_null(env_value) { env_value = .container_labels."observability.environment" }
+if is_null(env_value) { env_value = .container_labels."observability.env" }
+if is_null(env_value) { env_value = .container_labels."env" }
+
+env_raw = ""
+if is_string(env_value) { env_raw = downcase(string!(env_value)) }
 
 .environment = if env_raw == "prod" || env_raw == "production" {
 	"production"
@@ -41,7 +147,14 @@ env_raw = downcase(string!(env_value))
 # This helps filtering logs for Redis/Valkey, OpenSearch and Postgres even when
 # they run as separate services/containers.
 service_lc = downcase(string!(.service))
-image_lc = downcase(string!(.container_image) ?? "")
+
+image_raw = ""
+if is_string(.container_image) { image_raw = .container_image }
+if image_raw == "" && is_string(.image) { image_raw = .image }
+if image_raw == "" && is_object(.container) && is_string(.container.image) { image_raw = .container.image }
+if image_raw == "" && is_object(.docker) && is_string(.docker.image) { image_raw = .docker.image }
+
+image_lc = downcase(string!(image_raw))
 container_lc = downcase(string!(.container))
 
 # InvenioRDM workload role (Coolify-style container names)
@@ -74,7 +187,13 @@ container_lc = downcase(string!(.container))
 # - OpenSearch: [..][INFO ]
 # - Postgres: FATAL:, ERROR:, WARNING:
 # - JSON logs: {"level":"info"}
-msg = string!(.message ?? .log ?? "")
+msg = if is_string(.message) {
+	.message
+} else if is_string(.log) {
+	.log
+} else {
+	""
+}
 level_raw = null
 
 if is_string(.level) {
@@ -98,11 +217,16 @@ if is_string(.level) {
 	}
 }
 
-level_norm = downcase(string!(level_raw ?? ""))
+level_norm = ""
+if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
 .level = if level_norm == "warning" || level_norm == "warn" {
 	"warn"
 } else if level_norm == "notice" {
 	"info"
+} else if level_norm == "err" || level_norm == "error" {
+	"error"
+} else if level_norm == "crit" || level_norm == "critical" || level_norm == "alert" || level_norm == "emerg" {
+	"fatal"
 } else if level_norm == "panic" {
 	"fatal"
 } else if level_norm == "trace" || level_norm == "debug" || level_norm == "info" || level_norm == "error" || level_norm == "fatal" {
@@ -112,7 +236,12 @@ level_norm = downcase(string!(level_raw ?? ""))
 }
 
 # Default: use Compose project name when available
-.app = .project ?? "invenio-rdm"
+app_raw = .project
+.app = if is_string(app_raw) && app_raw != "" {
+	app_raw
+} else {
+	"invenio-rdm"
+}
 '''
 
 [sinks.loki]
@@ -120,6 +249,11 @@ type = "loki"
 inputs = ["normalize"]
 endpoint = "http://loki:3100"
 encoding.codec = "json"
+
+[sinks.prometheus_exporter]
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "127.0.0.1:9598"
 
 [sinks.loki.labels]
 app = "{{ app }}"

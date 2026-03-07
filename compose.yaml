@@ -90,6 +90,7 @@ services:
     image: 'timberio/vector:0.53.0-alpine'
     container_name: vector
     command: [ "--config", "/etc/vector/vector.toml" ]
+    user: "0:0"
     volumes:
       - '/data/coolify/services/vector/vector.toml:/etc/vector/vector.toml:ro'
       - '/var/run/docker.sock:/var/run/docker.sock'
