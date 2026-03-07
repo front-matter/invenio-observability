@@ -138,7 +138,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (component) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", component!=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum by (component) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", component!~\"web-.*\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -227,7 +227,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", service=~\"${service:regex}\", component!=\"inveniordm-web\"}[$__interval]))",
+          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", service=~\"${service:regex}\", component!~\"web-.*\"}[$__interval]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -265,7 +265,7 @@
             "uid": "loki"
           },
           "editorMode": "code",
-          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component!=\"inveniordm-web\"} |~ \"$search\" | json | line_format \"{{.component}}\t{{.message}}\"",
+          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component!~\"web-.*\"} |~ \"$search\" | json | line_format \"{{.component}}\t{{.message}}\"",
           "queryType": "range",
           "refId": "A"
         }

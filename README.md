@@ -61,13 +61,14 @@ Note: the dashboard variable is named `level`, but the underlying Loki stream la
 
 Notes:
 
-- The `Search` variable is treated as a regex (LogQL `|~`). Default is `.*` (show all logs). For a simple “contains” filter you can usually just type a word like `error`.
+- The `Search` variable is treated as a regex (LogQL `|~`). Default is empty (no extra filter). For a simple “contains” filter you can usually just type a word like `error`.
 - Loki requires at least one non-empty-compatible matcher in the selector; therefore the `app` variable uses `.+` for “All”.
 
 ## Log labels and levels
 
 - `vector.toml` extracts `service`, `app` and `environment` from Docker labels. In some environments (e.g. Coolify), labels are exposed as `.label` instead of `.container_labels`.
-- InvenioRDM workloads are split into `component=inveniordm-web` and `component=inveniordm-worker` (no separate `role` label).
+- `component` is derived strictly from `label_coolify_resourceName`.
+- If the container name starts with `web-` or `worker-`, the component is prefixed as `web-<resource>` / `worker-<resource>`.
 - For HTTP access logs without an explicit log level, Vector infers `.severity` from the HTTP status code (2xx/3xx → `info`, 4xx → `warn`, 5xx → `error`). This is sent to Loki as the `log_level` label.
 - For common HTTP access log lines, Vector also extracts an optional `.user_agent` field (kept as a log field, not a Loki label). In LogQL you can filter it like: `| json | user_agent=~"SentryUptimeBot.*"`.
 - Vector extracts the HTTP method into `.http_method` (e.g. `get`, `post`). Filter example: `| json | http_method="post"`.

@@ -20,19 +20,12 @@ exclude_containers = [
   # NOTE: `exclude_containers` uses prefix matching (not glob patterns).
   # Excluding "sidecar" is useful when sidecars are named like "sidecar-...".
   "sidecar",
-  "/sidecar",
   "vector",
-  "/vector",
   "vector-",
-  "/vector-",
   "loki",
-  "/loki",
   "loki-",
-  "/loki-",
   "grafana",
-  "/grafana",
   "grafana-",
-  "/grafana-",
 ]
 
 # Reduce noise: only collect logs for the relevant workloads.
@@ -40,21 +33,13 @@ exclude_containers = [
 # containers are collected (unless excluded above).
 include_containers = [
   "web-",
-  "/web-",
   "worker-",
-  "/worker-",
   "coolify-proxy",
-  "/coolify-proxy",
   "opensearch-",
-  "/opensearch-",
   "valkey-",
-  "/valkey-",
   "redis-",
-  "/redis-",
   "postgres-",
-  "/postgres-",
   "keycloak-",
-  "/keycloak-",
 ]
 
 # IMPORTANT: `include_labels` on `docker_logs` is a *container filter* (expects
@@ -117,10 +102,23 @@ if is_object(labels_src) {
 	labels_out."com.docker.compose.project" = labels_src."com.docker.compose.project"
 	labels_out."coolify.projectName" = labels_src."coolify.projectName"
 	labels_out."coolify.environmentName" = labels_src."coolify.environmentName"
+	labels_out."coolify.resourceName" = labels_src."coolify.resourceName"
 	labels_out."environment" = labels_src."environment"
 	labels_out."observability.environment" = labels_src."observability.environment"
 	labels_out."observability.env" = labels_src."observability.env"
 	labels_out."env" = labels_src."env"
+}
+
+# Provide flattened label fields used by strict detection.
+# Some runtimes expose labels as flattened fields already; in that case we keep them.
+if !exists(.label_environment) && is_string(labels_src."environment") {
+	.label_environment = labels_src."environment"
+}
+if !exists(.label_coolify_environmentName) && is_string(labels_src."coolify.environmentName") {
+	.label_coolify_environmentName = labels_src."coolify.environmentName"
+}
+if !exists(.label_coolify_resourceName) && is_string(labels_src."coolify.resourceName") {
+	.label_coolify_resourceName = labels_src."coolify.resourceName"
 }
 .container_labels = labels_out
 
@@ -134,17 +132,15 @@ coolify_project = .container_labels."coolify.projectName"
 stream_value = .stream
 .stream = if is_null(stream_value) { "stdout" } else { stream_value }
 
-# Environment labeling (recommended): set a Docker label per service/container.
-# Examples (choose one convention and keep it consistent):
-#   environment=production
-#   environment=staging
-#   observability.environment=production
-#   observability.env=production
-env_value = .container_labels."environment"
-if is_null(env_value) { env_value = .container_labels."observability.environment" }
-if is_null(env_value) { env_value = .container_labels."observability.env" }
-if is_null(env_value) { env_value = .container_labels."env" }
-if is_null(env_value) { env_value = .container_labels."coolify.environmentName" }
+env_value = null
+
+# Strict environment detection:
+# Only use flattened label fields `label_environment` or `label_coolify_environmentName`.
+# Ignore any other sources (including `.container_labels.*` fallbacks).
+if exists(.label_environment) && is_string(.label_environment) { env_value = .label_environment }
+if is_null(env_value) && exists(.label_coolify_environmentName) && is_string(.label_coolify_environmentName) {
+	env_value = .label_coolify_environmentName
+}
 
 env_raw = ""
 if is_string(env_value) { env_raw = downcase(string!(env_value)) }
@@ -156,37 +152,34 @@ if is_string(env_value) { env_raw = downcase(string!(env_value)) }
 } else {
 	"unknown"
 }
-
-# Classify infrastructure components with low label cardinality.
-# This helps filtering logs for Redis/Valkey, OpenSearch and Postgres even when
-# they run as separate services/containers.
-service_lc = downcase(string!(.service))
-
-image_raw = ""
-if is_string(.container_image) { image_raw = .container_image }
-if image_raw == "" && is_string(.image) { image_raw = .image }
-if image_raw == "" && is_object(.container) && is_string(.container.image) { image_raw = .container.image }
-if image_raw == "" && is_object(.docker) && is_string(.docker.image) { image_raw = .docker.image }
-
-image_lc = downcase(string!(image_raw))
 container_lc = downcase(.container)
 
-.component = if contains(service_lc, "traefik") || contains(image_lc, "traefik") || service_lc == "coolify-proxy" || container_lc == "coolify-proxy" {
-	"traefik"
-} else if contains(service_lc, "redis") || contains(service_lc, "valkey") || starts_with(container_lc, "redis-") || starts_with(container_lc, "valkey-") || contains(image_lc, "redis") || contains(image_lc, "valkey") {
-	"redis"
-} else if contains(service_lc, "opensearch") || starts_with(container_lc, "opensearch-") || contains(image_lc, "opensearch") {
-	"opensearch"
-} else if contains(service_lc, "postgres") || starts_with(container_lc, "postgres-") || contains(image_lc, "postgres") {
-	"postgres"
-} else if service_lc == "keycloak" || starts_with(container_lc, "keycloak-") || contains(image_lc, "keycloak") {
-	"keycloak"
-} else if starts_with(container_lc, "web-") {
-	"inveniordm-web"
-} else if starts_with(container_lc, "worker-") {
-	"inveniordm-worker"
+# Component naming (strict):
+# - Base component comes ONLY from flattened label field `label_coolify_resourceName`.
+# - If the container name starts with `web-` or `worker-`, prefix the component with that.
+resource_value = ""
+if exists(.label_coolify_resourceName) && is_string(.label_coolify_resourceName) {
+	resource_value = string!(.label_coolify_resourceName)
+}
+
+resource_lc = downcase(resource_value)
+trim_match = parse_regex(resource_lc, r'^\s*(?P<v>.*?)\s*$') ?? null
+if trim_match != null {
+	resource_lc = string!(trim_match.v)
+}
+
+resource_component = if resource_lc != "" {
+	resource_lc
 } else {
-	"other"
+	"unknown"
+}
+
+.component = if starts_with(container_lc, "web-") {
+	"web-" + resource_component
+} else if starts_with(container_lc, "worker-") {
+	"worker-" + resource_component
+} else {
+	resource_component
 }
 
 # Detect log level (low cardinality). Works for common formats:
@@ -206,9 +199,17 @@ level_raw = null
 # Parse common HTTP access logs (combined format) to structured fields.
 # Example:
 # 172.18.0.2 - - [07/Mar/2026:13:00:41 +0000] "GET /static/favicon.ico HTTP/1.1" 200 0 "https://example.org/" "Mozilla/5.0 ..."
-if msg != "" && .component == "inveniordm-web" {
-	access = parse_regex(msg, r'^\S+\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/(?P<httpver>[^\"]+)"\s+(?P<status>\d{3})\s+(?P<bytes>\d+|-)\s+"(?P<referer>[^\"]*)"\s+"(?P<ua>[^\"]*)"') ?? null
+if msg != "" && starts_with(.component, "web-") {
+	access = parse_regex(msg, r'^(?P<ip>\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/(?P<httpver>[^\"]+)"\s+(?P<status>\d{3})\s+(?P<bytes>\d+|-)\s+"(?P<referer>[^\"]*)"\s+"(?P<ua>[^\"]*)"') ?? null
 	if access != null {
+		# Client IP
+		if !exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "") {
+			ip_raw = string!(access.ip)
+			if ip_raw != "" && ip_raw != "-" {
+				.client_ip = ip_raw
+			}
+		}
+
 		# Method / status / referer / UA
 		if !exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "") {
 			.http_method = downcase(string!(access.method))
@@ -230,14 +231,46 @@ if msg != "" && .component == "inveniordm-web" {
 				.user_agent = ua_raw
 			}
 		}
+	}
 
-		# For dashboards, treat "url" as the request path (target), not the referer.
-		if (!exists(.http_url) || is_null(.http_url) || (is_string(.http_url) && string!(.http_url) == "")) {
-			if exists(.http_target) && is_string(.http_target) {
-				.http_url = .http_target
-			} else if exists(.http_referer) && is_string(.http_referer) {
-				.http_url = .http_referer
+	# Fallback: extract request URL from the request line even if the full combined
+	# format regex didn't match.
+	if (!exists(.http_target) || is_null(.http_target) || (is_string(.http_target) && string!(.http_target) == "")) {
+		req_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/[^"]+"') ?? null
+		if req_match != null {
+			.http_target = string!(req_match.target)
+			if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
+				.http_method = downcase(string!(req_match.method))
 			}
+		}
+	}
+
+	# Fallback: extract referer from the quoted field after status/bytes.
+	if (!exists(.http_referer) || is_null(.http_referer) || (is_string(.http_referer) && string!(.http_referer) == "")) {
+		referer_match = parse_regex(msg, r'"\s+\d{3}\s+(?:\d+|-)\s+"(?P<referer>[^"]*)"') ?? null
+		if referer_match != null {
+			referer_raw2 = string!(referer_match.referer)
+			if referer_raw2 != "" && referer_raw2 != "-" {
+				.http_referer = referer_raw2
+			}
+		}
+	}
+
+	# Fallback: extract client IP from the first token.
+	if (!exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "")) {
+		ip_match = parse_regex(msg, r'^(?P<ip>\S+)\s+') ?? null
+		if ip_match != null {
+			ip_raw2 = string!(ip_match.ip)
+			if ip_raw2 != "" && ip_raw2 != "-" {
+				.client_ip = ip_raw2
+			}
+		}
+	}
+
+	# For dashboards, treat "url" as the request URL/target (never the referer).
+	if (!exists(.http_url) || is_null(.http_url) || (is_string(.http_url) && string!(.http_url) == "")) {
+		if exists(.http_target) && is_string(.http_target) {
+			.http_url = .http_target
 		}
 	}
 }
@@ -245,7 +278,7 @@ if msg != "" && .component == "inveniordm-web" {
 # Extract optional user-agent from common HTTP access log lines, e.g.
 # 172.18.0.2 - - [..] "GET / HTTP/1.1" 200 26402 "-" "SentryUptimeBot/1.0 ..."
 # Keep it as a field (not a Loki label) to avoid label-cardinality explosion.
-if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) && msg != "" && .component == "inveniordm-web" {
+if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) && msg != "" && starts_with(.component, "web-") {
 	ua_match = parse_regex(msg, r'"[A-Z]+\s+[^\s]+\s+HTTP\/[^\"]+"\s+\d{3}\s+\d+\s+"[^\"]*"\s+"(?P<ua>[^\"]*)"\s*$') ?? null
 	if ua_match != null {
 		ua_raw = string!(ua_match.ua)
@@ -256,7 +289,7 @@ if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && s
 }
 
 # Extract HTTP verb from access logs (GET/POST/PUT/...), normalized to lowercase.
-if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) && msg != "" && .component == "inveniordm-web" {
+if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) && msg != "" && starts_with(.component, "web-") {
 	method_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+[^\s]+\s+HTTP\/[^\"]+"') ?? null
 	if method_match != null {
 		.http_method = downcase(string!(method_match.method))
@@ -264,7 +297,7 @@ if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) &
 }
 
 # Truncate user-agent for dashboard display.
-if .component == "inveniordm-web" && exists(.user_agent) && is_string(.user_agent) {
+if starts_with(.component, "web-") && exists(.user_agent) && is_string(.user_agent) {
 	ua_full = string!(.user_agent)
 	if ua_full != "" {
 		ua_short_match = parse_regex(ua_full, r'^(?P<ua>.{0,40})') ?? null
@@ -314,7 +347,7 @@ if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
 }
 
 # Access logs often don't contain an explicit level; infer it from HTTP status.
-if .severity == "unknown" && .component == "inveniordm-web" {
+if .severity == "unknown" && starts_with(.component, "web-") {
 	status_code = null
 	if exists(.http_status) {
 		status_code = to_int(.http_status) ?? null
@@ -358,11 +391,6 @@ inputs = ["normalize"]
 endpoint = "http://loki:3100"
 encoding.codec = "json"
 encoding.except_fields = ["severity"]
-
-[sinks.prometheus_exporter]
-type = "prometheus_exporter"
-inputs = ["internal_metrics"]
-address = "127.0.0.1:9598"
 
 [sinks.loki.labels]
 app = "{{ app }}"
