@@ -1,12 +1,12 @@
 {
   "__inputs": [
     {
-      "name": "DS_LOKI",
-      "label": "Loki",
+      "name": "DS_VICTORIALOGS",
+      "label": "VictoriaLogs",
       "description": "",
       "type": "datasource",
-      "pluginId": "loki",
-      "pluginName": "Loki"
+      "pluginId": "victoriametrics-logs-datasource",
+      "pluginName": "VictoriaLogs"
     }
   ],
   "__requires": [
@@ -18,8 +18,8 @@
     },
     {
       "type": "datasource",
-      "id": "loki",
-      "name": "Loki",
+      "id": "victoriametrics-logs-datasource",
+      "name": "VictoriaLogs",
       "version": "1.0.0"
     },
     {
@@ -59,8 +59,8 @@
   "panels": [
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "fieldConfig": {
         "defaults": {
@@ -134,12 +134,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "sum(rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", country=~\"${country:regex}\", component=~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment log_level:$level country:$country component:~\"web-.*\" http_method:$http_method | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
           "refId": "A"
         }
       ],
@@ -148,8 +148,8 @@
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "fieldConfig": {
         "defaults": {
@@ -223,12 +223,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", country=~\"${country:regex}\", component=~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment country:$country component:~\"web-.*\" http_method:$http_method | stats by (_time:$__interval, log_level) count() as hits",
+          "queryType": "statsRange",
           "refId": "A"
         }
       ],
@@ -237,8 +237,8 @@
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "gridPos": {
         "h": 14,
@@ -261,11 +261,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", log_level=~\"${level:regex}\", country=~\"${country:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component=~\"web-.*\"} |~ \"$search\" | json | line_format \"{{if .log_level}}{{.log_level}}{{else}}-{{end}}\t{{if .http_status}}{{.http_status}}{{else}}-{{end}}\t{{if .client_ip}}{{.client_ip}}{{else}}-{{end}}\t{{if .country}}{{.country}}{{else}}-{{end}}\t{{if .http_method}}{{.http_method}}{{else}}-{{end}}\t{{if .http_url}}{{.http_url}}{{else if .http_target}}{{.http_target}}{{else}}-{{end}}\t{{if .http_referer}}{{.http_referer}}{{else}}-{{end}}\t{{if .user_agent}}{{.user_agent}}{{else}}-{{end}}\"",
+          "expr": "app:$app environment:$environment log_level:$level country:$country container:$container stream:$stream component:~\"web-.*\" http_method:$http_method _msg:~\"$search\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -279,7 +279,7 @@
   "tags": [
     "inveniordm",
     "requests",
-    "loki",
+    "victorialogs",
     "vector"
   ],
   "templating": {
@@ -288,14 +288,17 @@
         "name": "app",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({component=~\"web-.*\"}, app)",
-        "definition": "label_values({component=~\"web-.*\"}, app)",
+        "query": {
+          "type": "fieldValue",
+          "field": "app"
+        },
+        "definition": "field_values(app)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".+",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -308,14 +311,17 @@
         "name": "environment",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({component=~\"web-.*\"}, environment)",
-        "definition": "label_values({component=~\"web-.*\"}, environment)",
+        "query": {
+          "type": "fieldValue",
+          "field": "environment"
+        },
+        "definition": "field_values(environment)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -328,14 +334,17 @@
         "name": "level",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({component=~\"web-.*\"}, log_level)",
-        "definition": "label_values({component=~\"web-.*\"}, log_level)",
+        "query": {
+          "type": "fieldValue",
+          "field": "log_level"
+        },
+        "definition": "field_values(log_level)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -348,14 +357,17 @@
         "name": "container",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({component=~\"web-.*\"}, container)",
-        "definition": "label_values({component=~\"web-.*\"}, container)",
+        "query": {
+          "type": "fieldValue",
+          "field": "container"
+        },
+        "definition": "field_values(container)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -368,14 +380,17 @@
         "name": "stream",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({component=~\"web-.*\"}, stream)",
-        "definition": "label_values({component=~\"web-.*\"}, stream)",
+        "query": {
+          "type": "fieldValue",
+          "field": "stream"
+        },
+        "definition": "field_values(stream)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -389,17 +404,34 @@
         "type": "query",
         "label": "Country",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"web-.*\"}, country)",
-        "definition": "label_values({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"web-.*\"}, country)",
+        "query": {
+          "type": "fieldValue",
+          "field": "country"
+        },
+        "definition": "field_values(country)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "http_method",
+        "type": "custom",
+        "label": "HTTP method",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "*",
+        "multi": true,
+        "query": "get,post,put,patch,delete,head,options,unknown",
         "current": {
           "text": "All",
           "value": "$__all"
@@ -410,10 +442,10 @@
         "type": "textbox",
         "label": "Search (regex)",
         "hide": 0,
-        "query": "",
+        "query": ".*",
         "current": {
-          "text": "",
-          "value": ""
+          "text": ".*",
+          "value": ".*"
         }
       }
     ]
@@ -437,5 +469,5 @@
   "timezone": "",
   "title": "InvenioRDM Requests",
   "uid": "inveniordm-requests",
-  "version": 6
+  "version": 7
 }

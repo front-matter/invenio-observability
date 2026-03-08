@@ -15,21 +15,21 @@ groups:
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: "Error/fatal/exception logs detected in Loki"
-          description: 'Detected error-like log lines in the last 5 minutes. Query: sum(count_over_time({app=~".+"} |~ "(?i)(error|exception|traceback|fatal|panic)" [5m]))'
+          summary: "Error/fatal/exception logs detected in VictoriaLogs"
+          description: 'Detected error-like log lines in the last 5 minutes. Query: app:* _msg:~"(?i)(error|exception|traceback|fatal|panic)" | stats count() as hits'
         labels:
           severity: warning
-          source: loki
+          source: victorialogs
         data:
           - refId: A
-            datasourceUid: loki
+            datasourceUid: victorialogs
             relativeTimeRange:
               from: 300
               to: 0
             model:
               editorMode: code
-              expr: 'sum(count_over_time({app=~".+"} |~ "(?i)(error|exception|traceback|fatal|panic)" [5m]))'
-              queryType: instant
+              expr: 'app:* _msg:~"(?i)(error|exception|traceback|fatal|panic)" | stats count() as hits'
+              queryType: stats
               refId: A
           - refId: B
             datasourceUid: __expr__

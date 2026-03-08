@@ -24,6 +24,8 @@ exclude_containers = [
   "vector-",
   "loki",
   "loki-",
+  "victorialogs",
+  "victorialogs-",
   "grafana",
   "grafana-",
 ]
@@ -63,9 +65,6 @@ multiline.timeout_ms = 1000
 [enrichment_tables.geoip]
 type = "geoip"
 path = "/data/coolify/services/geoip/GeoLite2-City.mmdb"
-
-[sources.internal_metrics]
-type = "internal_metrics"
 
 [transforms.keep_invenio_infra]
 type = "filter"
@@ -206,6 +205,67 @@ level_raw = null
 # Example:
 # 172.18.0.2 - - [07/Mar/2026:13:00:41 +0000] "GET /static/favicon.ico HTTP/1.1" 200 0 "https://example.org/" "Mozilla/5.0 ..."
 if msg != "" && starts_with(.component, "web-") {
+	# Preferred: Gunicorn JSON access logs (GUNICORN_ACCESS_LOGFORMAT)
+	# Example:
+	# {"time":"[08/Mar/2026:09:30:47 +0000]","ip":"43.134.29.248","method":"GET","path":"/","query":"","status":200,...}
+	access_json = parse_json(msg) ?? null
+	if is_object(access_json) {
+		method_raw = to_string(access_json.method) ?? ""
+		status_code_json = to_int(access_json.status) ?? null
+		path_raw = to_string(access_json.path) ?? ""
+
+		# Only treat as access log when it has the key fields.
+		if method_raw != "" && !is_null(status_code_json) && path_raw != "" {
+			ip_raw = to_string(access_json.ip) ?? ""
+			if (!exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "")) {
+				if ip_raw != "" && ip_raw != "-" {
+					# x-forwarded-for may contain a comma-separated list; keep the first IP.
+					ip_first = split(ip_raw, ",")[0]
+					trim_match = parse_regex(ip_first, r'^\s*(?P<v>.*?)\s*$') ?? null
+					ip_trim = if trim_match != null { string!(trim_match.v) } else { ip_first }
+					if ip_trim != "" {
+						.client_ip = ip_trim
+					}
+				}
+			}
+
+			if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
+				.http_method = downcase(method_raw)
+			}
+			.http_status = status_code_json
+
+			if (!exists(.http_target) || is_null(.http_target) || (is_string(.http_target) && string!(.http_target) == "")) {
+				.http_target = path_raw
+			}
+
+			query_raw = to_string(access_json.query) ?? ""
+			if (!exists(.http_url) || is_null(.http_url) || (is_string(.http_url) && string!(.http_url) == "")) {
+				.http_url = if query_raw != "" {
+					if starts_with(query_raw, "?") { path_raw + query_raw } else { path_raw + "?" + query_raw }
+				} else {
+					path_raw
+				}
+			}
+
+			referer_raw = to_string(access_json.referer) ?? ""
+			if referer_raw != "" && referer_raw != "-" {
+				.http_referer = referer_raw
+			}
+
+			ua_raw = to_string(access_json.user_agent) ?? ""
+			if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) {
+				if ua_raw != "" && ua_raw != "-" {
+					.user_agent = ua_raw
+				}
+			}
+
+			rt = to_float(access_json.request_time) ?? null
+			if !is_null(rt) {
+				.duration_seconds = rt
+			}
+		}
+	}
+
 	access = parse_regex(msg, r'^(?P<ip>\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/(?P<httpver>[^\"]+)"\s+(?P<status>\d{3})\s+(?P<bytes>\d+|-)\s+"(?P<referer>[^\"]*)"\s+"(?P<ua>[^\"]*)"') ?? null
 	if access != null {
 		# Client IP
@@ -302,6 +362,18 @@ if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) &
 	}
 }
 
+# Ensure http_method is always present for web-* logs so dashboard filtering
+# doesn't accidentally drop events.
+if starts_with(.component, "web-") && (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
+	.http_method = "get"
+}
+
+# Provide a default for non-web logs so the Loki/VictoriaLogs label value
+# isn't empty.
+if !exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "") {
+	.http_method = "unknown"
+}
+
 # Truncate user-agent for dashboard display.
 if starts_with(.component, "web-") && exists(.user_agent) && is_string(.user_agent) {
 	ua_full = string!(.user_agent)
@@ -389,6 +461,13 @@ app_raw = .project
 } else {
 	"invenio-rdm"
 }
+
+# VictoriaLogs expects `_msg` as the primary log message field. Since we ship
+# JSON-encoded events via Loki ingestion, ensure `_msg` is present so Grafana
+# doesn't display the default "missing _msg field" placeholder.
+if (!exists(._msg) || is_null(._msg) || (is_string(._msg) && string!(._msg) == "")) && msg != "" {
+	._msg = msg
+}
 '''
 
 [transforms.geoip_enrich]
@@ -430,7 +509,7 @@ if starts_with(component, "web-") {
 [sinks.loki]
 type = "loki"
 inputs = ["geoip_enrich"]
-endpoint = "http://loki:3100"
+endpoint = "http://victorialogs:9428/insert"
 encoding.codec = "json"
 encoding.except_fields = ["severity"]
 
@@ -443,3 +522,4 @@ service = "{{ service }}"
 container = "{{ container }}"
 stream = "{{ stream }}"
 country = "{{ country }}"
+http_method = "{{ http_method }}"

@@ -1,12 +1,12 @@
 {
   "__inputs": [
     {
-      "name": "DS_LOKI",
-      "label": "Loki",
+      "name": "DS_VICTORIALOGS",
+      "label": "VictoriaLogs",
       "description": "",
       "type": "datasource",
-      "pluginId": "loki",
-      "pluginName": "Loki"
+      "pluginId": "victoriametrics-logs-datasource",
+      "pluginName": "VictoriaLogs"
     }
   ],
   "__requires": [
@@ -18,8 +18,8 @@
     },
     {
       "type": "datasource",
-      "id": "loki",
-      "name": "Loki",
+      "id": "victoriametrics-logs-datasource",
+      "name": "VictoriaLogs",
       "version": "1.0.0"
     },
     {
@@ -59,8 +59,8 @@
   "panels": [
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "fieldConfig": {
         "defaults": {
@@ -134,12 +134,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "sum by (component) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", component!~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment component:$component log_level:$level service:$service | stats by (_time:$__interval, component) count() as hits",
+          "queryType": "statsRange",
           "refId": "A"
         }
       ],
@@ -148,8 +148,8 @@
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "fieldConfig": {
         "defaults": {
@@ -223,12 +223,12 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "sum by (log_level) (rate({app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", service=~\"${service:regex}\", component!~\"web-.*\"}[$__interval]))",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment component:$component service:$service | stats by (_time:$__interval, log_level) count() as hits",
+          "queryType": "statsRange",
           "refId": "A"
         }
       ],
@@ -237,8 +237,8 @@
     },
     {
       "datasource": {
-        "type": "loki",
-        "uid": "loki"
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
       },
       "gridPos": {
         "h": 14,
@@ -261,11 +261,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "loki"
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "{app=~\"${app:regex}\", environment=~\"${environment:regex}\", component=~\"${component:regex}\", log_level=~\"${level:regex}\", service=~\"${service:regex}\", container=~\"${container:regex}\", stream=~\"${stream:regex}\", component!~\"web-.*\"} |~ \"$search\" | json | line_format \"{{.component}}\t{{.message}}\"",
+          "expr": "app:$app environment:$environment component:$component log_level:$level service:$service container:$container stream:$stream _msg:~\"$search\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -279,7 +279,7 @@
   "tags": [
     "inveniordm",
     "logs",
-    "loki",
+    "victorialogs",
     "vector"
   ],
   "templating": {
@@ -288,14 +288,17 @@
         "name": "app",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(app)",
-        "definition": "label_values(app)",
+        "query": {
+          "type": "fieldValue",
+          "field": "app"
+        },
+        "definition": "field_values(app)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".+",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -308,14 +311,17 @@
         "name": "environment",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(environment)",
-        "definition": "label_values(environment)",
+        "query": {
+          "type": "fieldValue",
+          "field": "environment"
+        },
+        "definition": "field_values(environment)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -328,14 +334,17 @@
         "name": "component",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(component)",
-        "definition": "label_values(component)",
+        "query": {
+          "type": "fieldValue",
+          "field": "component"
+        },
+        "definition": "field_values(component)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -348,14 +357,17 @@
         "name": "level",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(log_level)",
-        "definition": "label_values(log_level)",
+        "query": {
+          "type": "fieldValue",
+          "field": "log_level"
+        },
+        "definition": "field_values(log_level)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -368,14 +380,17 @@
         "name": "service",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(service)",
-        "definition": "label_values(service)",
+        "query": {
+          "type": "fieldValue",
+          "field": "service"
+        },
+        "definition": "field_values(service)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -388,14 +403,17 @@
         "name": "container",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(container)",
-        "definition": "label_values(container)",
+        "query": {
+          "type": "fieldValue",
+          "field": "container"
+        },
+        "definition": "field_values(container)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -408,14 +426,17 @@
         "name": "stream",
         "type": "query",
         "datasource": {
-          "type": "loki",
-          "uid": "loki"
+          "type": "victoriametrics-logs-datasource",
+          "uid": "victorialogs"
         },
-        "query": "label_values(stream)",
-        "definition": "label_values(stream)",
+        "query": {
+          "type": "fieldValue",
+          "field": "stream"
+        },
+        "definition": "field_values(stream)",
         "hide": 0,
         "includeAll": true,
-        "allValue": ".*",
+        "allValue": "*",
         "multi": true,
         "refresh": 2,
         "sort": 1,
@@ -429,10 +450,10 @@
         "type": "textbox",
         "label": "Search (regex)",
         "hide": 0,
-        "query": "",
+        "query": ".*",
         "current": {
-          "text": "",
-          "value": ""
+          "text": ".*",
+          "value": ".*"
         }
       }
     ]

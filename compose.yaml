@@ -1,28 +1,27 @@
 # Docker Compose configuration for InvenioRDM observability stack
 # configuration files are stored under /data/coolify/services
 
-version: '3.9'
 services:
-  loki:
-    image: 'grafana/loki:2.9.17'
-    container_name: loki
-    command: '-config.file=/etc/loki/loki-config.yaml'
-    networks:
-      - coolify
+  victorialogs:
+    image: victoriametrics/victoria-logs:v1.47.0
+    expose:
+      - "9428"
     volumes:
-      - '/data/coolify/services/loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro'
-      - '/data/coolify/services/loki/loki-data:/loki'
-    ports:
-      - '3100:3100'
-    restart: unless-stopped
+      - /data/coolify/services/victorialogs/vl-data:/vlogs
+    command:
+      - -storageDataPath=/vlogs
+      - -retentionPeriod=3M
+      - -httpListenAddr=:9428
     healthcheck:
       test:
         - CMD-SHELL
-        - 'wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1'
+        - 'wget --spider --quiet http://localhost:9428/health || exit 1'
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 5
-      start_period: 20s
+      start_period: 10s
+    networks:
+      - coolify
   grafana:
     image: 'grafana/grafana:12.4.0'
     container_name: grafana
@@ -42,14 +41,14 @@ services:
       - 'GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-}'
       - 'GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-}'
 
-      # enable local login for admin user and basic auth   
+      # disable local login for admin user and basic auth   
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}
       - GF_AUTH_DISABLE_LOGIN_FORM=true
       - GF_AUTH_BASIC_ENABLED=false
       - GF_AUTH_ANONYMOUS_ENABLED=false
 
-      # enable login via Keycloak OIDC and disable local login form & basic auth
+      # enable login via Keycloak OIDC
       - GF_AUTH_GENERIC_OAUTH_ENABLED=${GF_AUTH_GENERIC_OAUTH_ENABLED:-true}
       - GF_AUTH_GENERIC_OAUTH_SCOPES=openid,email,profile
       - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
@@ -57,17 +56,14 @@ services:
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=Admin
 
       # Grafana 12 Drilldown apps are shipped as plugins.
-      - GF_PLUGINS_PREINSTALL=grafana-lokiexplore-app,grafana-metricsdrilldown-app
-
-      # Provide KEYCLOAK_PROVIDER_DOMAIN without a trailing slash, e.g. https://sso.example.org
-
+      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,grafana-metricsdrilldown-app
       - KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}
       - KEYCLOAK_REALM_NAME=${KEYCLOAK_REALM_NAME:-}
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GF_AUTH_GENERIC_OAUTH_CLIENT_ID:-}'
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:-}'
-      - 'GF_AUTH_GENERIC_OAUTH_AUTH_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/auth'
-      - 'GF_AUTH_GENERIC_OAUTH_TOKEN_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/token'
-      - 'GF_AUTH_GENERIC_OAUTH_API_URL=${KEYCLOAK_PROVIDER_DOMAIN}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/userinfo'
+      - 'GF_AUTH_GENERIC_OAUTH_AUTH_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/auth'
+      - 'GF_AUTH_GENERIC_OAUTH_TOKEN_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/token'
+      - 'GF_AUTH_GENERIC_OAUTH_API_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/userinfo'
       - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-}
     volumes:
       - '/data/coolify/services/grafana/grafana-data:/var/lib/grafana'
@@ -78,7 +74,7 @@ services:
       - '3000:3000'
     restart: unless-stopped
     depends_on:
-      - loki
+      - victorialogs
     healthcheck:
       test:
         - CMD-SHELL
@@ -99,18 +95,52 @@ services:
     networks:
       - coolify
     depends_on:
-      - loki
+      - victorialogs
     restart: unless-stopped
     healthcheck:
       test:
         - CMD-SHELL
-        - 'vector validate --no-environment /etc/vector/vector.toml || exit 1'
+        - 'vector validate /etc/vector/vector.toml || exit 1'
       interval: 60s
       timeout: 10s
       retries: 3
       start_period: 10s
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
+    environment:
+      - SERVICE_FQDN_OAUTH2PROXY_4180
+      - OAUTH2_PROXY_PROVIDER=keycloak-oidc
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OAUTH2_PROXY_OIDC_ISSUER_URL:-}
+      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-}
+      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET:-}
+      - OAUTH2_PROXY_REDIRECT_URL=${OAUTH2_PROXY_REDIRECT_URL:-}
+      - OAUTH2_PROXY_UPSTREAMS=http://victorialogs:9428
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      - OAUTH2_PROXY_COOKIE_SECRET=${OAUTH2_PROXY_COOKIE_SECRET:-}
+      - OAUTH2_PROXY_COOKIE_DOMAINS=${OAUTH2_PROXY_COOKIE_DOMAINS:-}
+      - OAUTH2_PROXY_EMAIL_DOMAINS=${OAUTH2_PROXY_EMAIL_DOMAINS:-}
+      - OAUTH2_PROXY_SCOPE=${OAUTH2_PROXY_SCOPE:-openid email profile}
+      - OAUTH2_PROXY_CODE_CHALLENGE_METHOD=S256
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+      - OAUTH2_PROXY_BACKEND_LOGOUT_URL=https://auth.front-matter.de/realms/master/protocol/openid-connect/logout?id_token_hint={id_token}&post_logout_redirect_uri=https://rogue-scholar.org
+    expose:
+      - "4180"
+    networks:
+      - coolify
+    depends_on:
+      - victorialogs
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - /bin/oauth2-proxy
+        - --version
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 volumes:
-  loki-data: null
+  vl-data: null
   grafana-data: null
   vector-config: null
 networks:
