@@ -30,6 +30,12 @@
     },
     {
       "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
       "id": "timeseries",
       "name": "Time series",
       "version": ""
@@ -240,6 +246,16 @@
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
       },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "wrapText": false,
+            "wrapHeaderText": false
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 14,
         "w": 24,
@@ -248,16 +264,36 @@
       },
       "id": 3,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showLogLevels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
+        "cellHeight": "sm",
+        "maxRowHeight": 32,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
       },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "labels": true
+            }
+          }
+        }
+      ],
       "targets": [
         {
           "datasource": {
@@ -265,13 +301,13 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "app:$app environment:$environment component:$component log_level:$level service:$service container:$container stream:$stream _msg:~\"$search\"",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment component:$component log_level:$level service:$service container:$container stream:$stream _msg:~\"$search\" | unpack_json if (_msg:~\"^{\") from _msg keep_original_fields | fields _time, app, environment, component, service, log_level, container, stream, level, msg, message, error, stacktrace, trace_id, span_id, request_id, _msg",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Services",
-      "type": "logs"
+      "type": "table"
     }
   ],
   "refresh": "30s",

@@ -30,6 +30,12 @@
     },
     {
       "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
       "id": "timeseries",
       "name": "Time series",
       "version": ""
@@ -240,6 +246,16 @@
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
       },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true,
+            "wrapText": false,
+            "wrapHeaderText": false
+          }
+        },
+        "overrides": []
+      },
       "gridPos": {
         "h": 14,
         "w": 24,
@@ -248,16 +264,36 @@
       },
       "id": 3,
       "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showLogLevels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "wrapLogMessage": true
+        "cellHeight": "sm",
+        "maxRowHeight": 32,
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
       },
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "format": "json",
+            "source": "Line"
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Line": true,
+              "labels": true
+            }
+          }
+        }
+      ],
       "targets": [
         {
           "datasource": {
@@ -265,13 +301,13 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "app:$app environment:$environment log_level:$level country:$country container:$container stream:$stream component:~\"web-.*\" http_method:$http_method _msg:~\"$search\"",
-          "queryType": "range",
+          "expr": "app:$app environment:$environment log_level:$level country:$country container:$container stream:$stream component:~\"web-.*\" http_method:$http_method _msg:~\"$search\" | unpack_json if (_msg:~\"^{\") from _msg keep_original_fields | fields _time, ip, method, path, query, status, referer, user_agent",
+          "queryType": "instant",
           "refId": "A"
         }
       ],
       "title": "Requests",
-      "type": "logs"
+      "type": "table"
     }
   ],
   "refresh": "30s",
