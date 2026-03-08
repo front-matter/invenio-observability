@@ -117,6 +117,11 @@ services:
             static_configs:
               - targets:
                   - redis-exporter:9121
+
+          - job_name: traefik
+            static_configs:
+              - targets:
+                  - coolify-proxy:9101
         EOF
 
         exec /vmagent-prod \
@@ -178,6 +183,8 @@ services:
   grafana:
     image: 'grafana/grafana:12.4.0'
     container_name: grafana
+    labels:
+      - "traefik.docker.network=coolify"
     environment:
       # use Postgres backend
       - GF_DATABASE_TYPE=postgres
