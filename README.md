@@ -21,11 +21,15 @@ Create directories and apply ownership/permissions:
 ```bash
 sudo mkdir -p \
 	/data/coolify/services/victorialogs/vl-data \
+	/data/coolify/services/victoriametrics/vm-data \
 	/data/coolify/services/grafana/grafana-data \
 	/data/coolify/services/vector
 
 # VictoriaLogs data directory (read/write)
 sudo chmod -R u+rwX /data/coolify/services/victorialogs/vl-data
+
+# VictoriaMetrics data directory (read/write)
+sudo chmod -R u+rwX /data/coolify/services/victoriametrics/vm-data
 
 # Grafana data directory (read/write)
 sudo chown -R 472:0 /data/coolify/services/grafana/grafana-data
@@ -59,6 +63,26 @@ Notes:
 - The `Search` variable is treated as a regex. Default is `.*` (match all). For a simple “contains” filter you can usually just type a word like `error`.
 - The dashboards use the VictoriaLogs data source and LogsQL queries (not LogQL).
 
+## Grafana dashboards (Keycloak metrics)
+
+Dieses Repository enthält zusätzlich zwei importierbare Keycloak-Metrics-Dashboards (PromQL), basierend auf `keycloak/keycloak-grafana-dashboard`:
+
+- `dashboards/keycloak-capacity-planning-dashboard.json`
+- `dashboards/keycloak-troubleshooting-dashboard.json`
+
+Voraussetzungen:
+
+- Keycloak stellt Metriken im Prometheus-Format bereit (bei `front-matter/keycloak-invenio` typischerweise `http://<host-or-service>:9000/metrics`).
+- Diese Compose-Definition nutzt **VictoriaMetrics** als Metrics-Backend und **vmagent** zum Scrapen (siehe [compose.yaml](compose.yaml)).
+- Die vmagent-Scrape-Konfiguration wird in [compose.yaml](compose.yaml) beim Container-Start generiert.
+- Optional kannst du das Scrape-Target über die Env-Var `KEYCLOAK_METRICS_TARGET` setzen (Default: `keycloak:9000`).
+
+Import:
+
+1. In Grafana: **Dashboards** → **New** → **Import**
+2. Dashboard JSON hochladen
+3. Wenn Grafana nach einer Datasource fragt, **VictoriaMetrics** auswählen
+
 ## Log labels and levels
 
 - `vector.toml` extracts `service`, `app` and `environment` from Docker labels. In some environments (e.g. Coolify), labels are exposed as `.label` instead of `.container_labels`.
@@ -76,15 +100,18 @@ To avoid Grafana pointing at the wrong VictoriaLogs URL (a common reason for “
 
 ```bash
 sudo mkdir -p /data/coolify/services/grafana/provisioning/datasources
+sudo mkdir -p /data/coolify/services/grafana/provisioning/dashboards
 ```
 
 2. Copy the repo file:
 
 - [grafana/provisioning/datasources/victorialogs.yaml](grafana/provisioning/datasources/victorialogs.yaml)
+ - [grafana/provisioning/datasources/victoriametrics.yaml](grafana/provisioning/datasources/victoriametrics.yaml)
 
 to:
 
 - `/data/coolify/services/grafana/provisioning/datasources/victorialogs.yaml`
+- `/data/coolify/services/grafana/provisioning/datasources/victoriametrics.yaml`
 
 3. Ensure your Grafana service has this volume mount (see [compose.yaml](compose.yaml)):
 

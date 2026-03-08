@@ -22,10 +22,10 @@ exclude_containers = [
   "sidecar",
   "vector",
   "vector-",
-  "loki",
-  "loki-",
   "victorialogs",
   "victorialogs-",
+  "victoriametrics",
+  "victoriametrics-",
   "grafana",
   "grafana-",
 ]
@@ -503,6 +503,11 @@ if starts_with(component, "web-") {
 		}
 	}
 	}
+}
+
+# Provide a default for non-web logs too, since `.country` is used as a Loki label.
+if (!exists(.country) || is_null(.country) || (is_string(.country) && string!(.country) == "")) {
+	.country = "unknown"
 }
 '''
 

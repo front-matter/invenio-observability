@@ -27,6 +27,9 @@ groups:
               from: 300
               to: 0
             model:
+              datasource:
+                type: victoriametrics-logs-datasource
+                uid: victorialogs
               editorMode: code
               expr: 'app:* _msg:~"(?i)(error|exception|traceback|fatal|panic)" | stats count() as hits'
               queryType: stats

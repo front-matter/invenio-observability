@@ -10,16 +10,106 @@ services:
       - /data/coolify/services/victorialogs/vl-data:/vlogs
     command:
       - -storageDataPath=/vlogs
-      - -retentionPeriod=3M
+      - -retentionPeriod=3
       - -httpListenAddr=:9428
     healthcheck:
       test:
         - CMD-SHELL
-        - 'wget --spider --quiet http://localhost:9428/health || exit 1'
+        - '(wget --spider --quiet http://127.0.0.1:9428/health 2>/dev/null || /bin/busybox wget --spider --quiet http://127.0.0.1:9428/health 2>/dev/null) || exit 1'
       interval: 30s
       timeout: 5s
       retries: 5
       start_period: 10s
+    networks:
+      - coolify
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics:v1.125.0
+    expose:
+      - "8428"
+    volumes:
+      - /data/coolify/services/victoriametrics/vm-data:/storage
+    command:
+      - -storageDataPath=/storage
+      - -retentionPeriod=3
+      - -httpListenAddr=:8428
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - '(wget --spider --quiet http://127.0.0.1:8428/health 2>/dev/null || /bin/busybox wget --spider --quiet http://127.0.0.1:8428/health 2>/dev/null) || exit 1'
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - coolify
+
+  vmagent:
+    image: victoriametrics/vmagent:v1.125.0
+    expose:
+      - "8429"
+    # Optional override (e.g. in Coolify env vars): KEYCLOAK_METRICS_TARGET=my-keycloak:9000
+    environment:
+      - KEYCLOAK_METRICS_TARGET
+      - KEYCLOAK_METRICS_PATH
+    entrypoint:
+      - /bin/sh
+      - -lc
+    command:
+      - |
+        set -eu
+
+        # In some orchestrators (e.g. Coolify), container DNS and dependent services
+        # can take a moment to become available. vmagent may exit early if the
+        # remote-write target can't be resolved/reached at startup.
+        echo "Waiting for VictoriaMetrics to become reachable..."
+        until (wget --spider --quiet http://victoriametrics:8428/health 2>/dev/null || /bin/busybox wget --spider --quiet http://victoriametrics:8428/health 2>/dev/null); do
+          sleep 2
+        done
+
+        if [ -z "$${KEYCLOAK_METRICS_TARGET:-}" ]; then
+          KEYCLOAK_METRICS_TARGET="keycloak:9000"
+        fi
+
+        # Keycloak may expose metrics on different paths depending on version/config
+        # (commonly /metrics or /q/metrics). Default to /metrics.
+        if [ -z "$${KEYCLOAK_METRICS_PATH:-}" ]; then
+          KEYCLOAK_METRICS_PATH="/metrics"
+        fi
+
+        # Normalize path (must start with '/').
+        case "$$KEYCLOAK_METRICS_PATH" in
+          /*) : ;;
+          *) KEYCLOAK_METRICS_PATH="/$$KEYCLOAK_METRICS_PATH" ;;
+        esac
+
+        # If the configured target isn't reachable, fall back to the stable
+        # network alias (when present).
+        METRICS_URL="http://$$KEYCLOAK_METRICS_TARGET$$KEYCLOAK_METRICS_PATH"
+        if ! (wget --spider --quiet "$$METRICS_URL" 2>/dev/null || /bin/busybox wget --spider --quiet "$$METRICS_URL" 2>/dev/null); then
+          echo "WARN: cannot reach $$METRICS_URL; falling back to keycloak:9000" >&2
+          KEYCLOAK_METRICS_TARGET="keycloak:9000"
+        fi
+
+        # Generate the vmagent scrape config at startup, so we don't need to mount
+        # a separate vmagent.yaml file.
+        cat > /tmp/vmagent.yaml <<EOF
+        global:
+          scrape_interval: 15s
+
+        scrape_configs:
+          - job_name: keycloak
+            metrics_path: $$KEYCLOAK_METRICS_PATH
+            static_configs:
+              - targets:
+                  - $$KEYCLOAK_METRICS_TARGET
+        EOF
+
+        exec /vmagent-prod \
+          -promscrape.config=/tmp/vmagent.yaml \
+          -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+    depends_on:
+      - victoriametrics
     networks:
       - coolify
   grafana:
@@ -56,7 +146,8 @@ services:
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=Admin
 
       # Grafana 12 Drilldown apps are shipped as plugins.
-      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,grafana-metricsdrilldown-app
+      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,victoriametrics-metrics-datasource,grafana-metricsdrilldown-app
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource,victoriametrics-metrics-datasource
       - KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}
       - KEYCLOAK_REALM_NAME=${KEYCLOAK_REALM_NAME:-}
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GF_AUTH_GENERIC_OAUTH_CLIENT_ID:-}'
@@ -75,10 +166,11 @@ services:
     restart: unless-stopped
     depends_on:
       - victorialogs
+      - victoriametrics
     healthcheck:
       test:
         - CMD-SHELL
-        - 'wget --spider --quiet http://localhost:3000/api/health || exit 1'
+        - '(wget --spider --quiet http://localhost:3000/api/health 2>/dev/null || /bin/busybox wget --spider --quiet http://localhost:3000/api/health 2>/dev/null) || exit 1'
       interval: 30s
       timeout: 10s
       retries: 5
@@ -96,6 +188,7 @@ services:
       - coolify
     depends_on:
       - victorialogs
+      - victoriametrics
     restart: unless-stopped
     healthcheck:
       test:
