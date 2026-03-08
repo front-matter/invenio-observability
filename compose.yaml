@@ -83,14 +83,6 @@ services:
           *) KEYCLOAK_METRICS_PATH="/$$KEYCLOAK_METRICS_PATH" ;;
         esac
 
-        # If the configured target isn't reachable, fall back to the stable
-        # network alias (when present).
-        METRICS_URL="http://$$KEYCLOAK_METRICS_TARGET$$KEYCLOAK_METRICS_PATH"
-        if ! (wget --spider --quiet "$$METRICS_URL" 2>/dev/null || /bin/busybox wget --spider --quiet "$$METRICS_URL" 2>/dev/null); then
-          echo "WARN: cannot reach $$METRICS_URL; falling back to keycloak:9000" >&2
-          KEYCLOAK_METRICS_TARGET="keycloak:9000"
-        fi
-
         # Generate the vmagent scrape config at startup, so we don't need to mount
         # a separate vmagent.yaml file.
         cat > /tmp/vmagent.yaml <<EOF
@@ -100,6 +92,13 @@ services:
         scrape_configs:
           - job_name: keycloak
             metrics_path: $$KEYCLOAK_METRICS_PATH
+            relabel_configs:
+              - target_label: namespace
+                replacement: keycloak
+              - target_label: pod
+                replacement: keycloak
+              - target_label: container
+                replacement: keycloak
             static_configs:
               - targets:
                   - $$KEYCLOAK_METRICS_TARGET
