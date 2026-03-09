@@ -207,3 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 geoip/GeoLite2-City.mmdb
+traefik-dashboard.json
+redis-dashboard.json
+node-exporter-full.json
+keycloak-dashboard.json
+auth-access.json
