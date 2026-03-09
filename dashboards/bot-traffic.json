@@ -1,0 +1,1035 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_VICTORIALOGS",
+      "label": "VictoriaLogs",
+      "type": "datasource",
+      "pluginId": "victoriametrics-logs-datasource"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "12.0.0"
+    },
+    {
+      "type": "datasource",
+      "id": "victoriametrics-logs-datasource",
+      "name": "VictoriaLogs",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "logs",
+      "name": "Logs",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    }
+  ],
+  "description": "Non-human / automated traffic monitor. Robot filter derived from counter-robots (https://github.com/inveniosoftware/counter-robots). Edit the hidden $robot_filter variable to adjust the pattern list.",
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Bot Requests",
+      "description": "Total log entries matching the counter-robots user-agent pattern in the selected time range.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value",
+        "text": {
+          "valueSize": 36
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Bot Traffic Share",
+      "description": "Robot requests as a percentage of all requests from $app. High share is normal for public repositories; spikes above baseline indicate crawl storms.",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^Bot %$/",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value",
+        "text": {
+          "valueSize": 36
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-green",
+                "value": null
+              },
+              {
+                "color": "dark-yellow",
+                "value": 0.1
+              },
+              {
+                "color": "dark-red",
+                "value": 0.5
+              }
+            ]
+          },
+          "unit": "percentunit",
+          "decimals": 1,
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment | stats by (_time:$__interval) count() if (user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\") as robots, count() as total",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "calculateField",
+          "options": {
+            "alias": "Bot %",
+            "mode": "binary",
+            "binary": {
+              "left": "robots",
+              "right": "total",
+              "operator": "/"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Peak Bot Rate",
+      "description": "Highest robot requests-per-minute seen in any single interval during the time window.",
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 11,
+        "y": 0
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "max"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "textMode": "value",
+        "text": {
+          "valueSize": 36
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-green",
+                "value": null
+              },
+              {
+                "color": "dark-yellow",
+                "value": 13
+              },
+              {
+                "color": "dark-red",
+                "value": 60
+              }
+            ]
+          },
+          "unit": "reqpm",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Bot Request Rate Over Time",
+      "description": "Volume of robot-matched log entries per interval. Compare shape with human traffic patterns: flat baseline = normal crawling; sharp step-up = new crawler or crawl storm.",
+      "gridPos": {
+        "h": 12,
+        "w": 16,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "max",
+            "sum"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "lineWidth": 0,
+            "pointSize": 4,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AI / LLM"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#FF7383",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Search"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#5794F2",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Tools / Scripts"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#EAB839",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Other Robots"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#a0a0a0",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment _msg:~\"ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "A",
+          "legendFormat": "AI / LLM"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment _msg:~\"google.com/bot|bing.com/bingbot|yandex.com/bots|baiduspider|ahrefsbot|semrush.com|mj12bot|petalbot\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "B",
+          "legendFormat": "Search"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment _msg:~\"curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "C",
+          "legendFormat": "Tools / Scripts"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "queryType": "statsRange",
+          "refId": "D",
+          "legendFormat": "Other Robots"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Top Bot User Agents",
+      "description": "Most frequent user-agent strings matched by the robot filter. High repeat counts from a non-indexer UA (curl, python-requests, axios) warrant investigation.",
+      "gridPos": {
+        "h": 16,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Hits",
+            "desc": true
+          }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": false
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "user_agent"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "User Agent"
+              },
+              {
+                "id": "custom.width",
+                "value": 280
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by this agent",
+                    "url": "/d/bot-traffic/bot-traffic?${__url_time_range}&var-app=${app}&var-environment=${environment}&var-search=${__value.text}",
+                    "targetBlank": false
+                  }
+                ]
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "SemrushBot": {
+                        "color": "#5794F2",
+                        "index": 0
+                      },
+                      "bingbot": {
+                        "color": "#5794F2",
+                        "index": 1
+                      },
+                      "Googlebot": {
+                        "color": "#5794F2",
+                        "index": 2
+                      },
+                      "YandexBot": {
+                        "color": "#5794F2",
+                        "index": 3
+                      },
+                      "Baiduspider": {
+                        "color": "#5794F2",
+                        "index": 4
+                      },
+                      "AhrefsBot": {
+                        "color": "#5794F2",
+                        "index": 5
+                      },
+                      "MJ12bot": {
+                        "color": "#5794F2",
+                        "index": 6
+                      },
+                      "PetalBot": {
+                        "color": "#5794F2",
+                        "index": 7
+                      },
+                      "ClaudeBot": {
+                        "color": "#FF7383",
+                        "index": 8
+                      },
+                      "GPTBot": {
+                        "color": "#FF7383",
+                        "index": 9
+                      },
+                      "Bytespider": {
+                        "color": "#FF7383",
+                        "index": 10
+                      },
+                      "Applebot": {
+                        "color": "#FF7383",
+                        "index": 11
+                      },
+                      "facebookexternalhit": {
+                        "color": "#a0a0a0",
+                        "index": 12
+                      },
+                      "Twitterbot": {
+                        "color": "#a0a0a0",
+                        "index": 13
+                      },
+                      "bot.html": {
+                        "color": "#a0a0a0",
+                        "index": 14
+                      },
+                      "spider.html": {
+                        "color": "#a0a0a0",
+                        "index": 15
+                      },
+                      "crawl.html": {
+                        "color": "#a0a0a0",
+                        "index": 16
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hits"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Hits"
+              },
+              {
+                "id": "custom.width",
+                "value": 80
+              },
+              {
+                "id": "unit",
+                "value": "short"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "A",
+          "expr": "component:$app environment:$environment user_agent:~\"semrush.com\" | format \"SemrushBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "B",
+          "expr": "component:$app environment:$environment user_agent:~\"bing.com/bingbot\" | format \"bingbot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "C",
+          "expr": "component:$app environment:$environment user_agent:~\"google.com/bot\" | format \"Googlebot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "D",
+          "expr": "component:$app environment:$environment user_agent:~\"yandex.com/bots\" | format \"YandexBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "E",
+          "expr": "component:$app environment:$environment user_agent:~\"[Bb]aiduspider\" | format \"Baiduspider\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "F",
+          "expr": "component:$app environment:$environment user_agent:~\"[Aa]hrefsbot\" | format \"AhrefsBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "G",
+          "expr": "component:$app environment:$environment user_agent:~\"[Mm][Jj]12[Bb]ot\" | format \"MJ12bot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "H",
+          "expr": "component:$app environment:$environment user_agent:~\"[Pp]etalbot\" | format \"PetalBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "I",
+          "expr": "component:$app environment:$environment user_agent:~\"ClaudeBot\" | format \"ClaudeBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "J",
+          "expr": "component:$app environment:$environment user_agent:~\"GPTBot\" | format \"GPTBot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "K",
+          "expr": "component:$app environment:$environment user_agent:~\"Bytespider\" | format \"Bytespider\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "L",
+          "expr": "component:$app environment:$environment user_agent:~\"[Aa]pplebot\" | format \"Applebot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "M",
+          "expr": "component:$app environment:$environment user_agent:~\"facebookexternalhit\" | format \"facebookexternalhit\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "N",
+          "expr": "component:$app environment:$environment user_agent:~\"[Tt]witterbot\" | format \"Twitterbot\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "O",
+          "expr": "component:$app environment:$environment user_agent:~\"bot.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"bot.html\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "P",
+          "expr": "component:$app environment:$environment user_agent:~\"spider.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"spider.html\" as user_agent | stats by (user_agent) count() as hits"
+        },
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "queryType": "instant",
+          "refId": "Q",
+          "expr": "component:$app environment:$environment user_agent:~\"crawl.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"crawl.html\" as user_agent | stats by (user_agent) count() as hits"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "Line",
+            "format": "json",
+            "replace": true
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "hits",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "time": true,
+              "Line": true,
+              "labels": true,
+              "detected_level": true,
+              "_stream": true,
+              "_time": true,
+              "_msg": true
+            },
+            "indexByName": {
+              "user_agent": 0,
+              "hits": 1
+            },
+            "renameByName": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "logs",
+      "title": "Live Bot Request Log",
+      "description": "Real-time stream of requests matching the counter-robots pattern. Each row is one access-log entry. Use the $search filter to narrow by path, IP, or specific user-agent substring.",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter _msg:~\".*$search.*\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 39,
+  "tags": [
+    "inveniordm",
+    "robots",
+    "traffic",
+    "security"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "app",
+        "label": "App",
+        "type": "custom",
+        "description": "Service (component field) to inspect. web-rogue-scholar is the default.",
+        "hide": 0,
+        "includeAll": false,
+        "multi": false,
+        "options": [
+          {
+            "selected": true,
+            "text": "rogue-scholar-web",
+            "value": "web-rogue-scholar"
+          },
+          {
+            "selected": false,
+            "text": "inveniordm-starter-web",
+            "value": "web-inveniordm-starter"
+          },
+          {
+            "selected": false,
+            "text": "keycloak",
+            "value": "keycloak"
+          }
+        ],
+        "current": {
+          "text": "rogue-scholar-web",
+          "value": "web-rogue-scholar"
+        },
+        "query": "web-rogue-scholar,web-inveniordm-starter,keycloak"
+      },
+      {
+        "name": "environment",
+        "label": "Environment",
+        "type": "custom",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": "*",
+        "multi": false,
+        "options": [
+          {
+            "selected": false,
+            "text": "All",
+            "value": "$__all"
+          },
+          {
+            "selected": true,
+            "text": "production",
+            "value": "production"
+          },
+          {
+            "selected": false,
+            "text": "staging",
+            "value": "staging"
+          }
+        ],
+        "current": {
+          "text": "production",
+          "value": "production"
+        },
+        "query": "production,staging"
+      },
+      {
+        "name": "search",
+        "label": "Search (path / IP / UA)",
+        "type": "textbox",
+        "hide": 0,
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "ua",
+        "label": "User Agent Filter",
+        "type": "textbox",
+        "hide": 2,
+        "description": "Set by clicking a row in Top Bot User Agents. Clear to show all bots.",
+        "query": ".*",
+        "current": {
+          "text": ".*",
+          "value": ".*"
+        }
+      },
+      {
+        "name": "robot_filter",
+        "label": "Robot Filter (regex)",
+        "description": "RE2 regex matched against the raw log line. Add terms with | separators. Source: counter-robots.",
+        "type": "constant",
+        "hide": 2,
+        "query": "semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html",
+        "current": {
+          "text": "semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html",
+          "value": "semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html"
+        }
+      },
+      {
+        "name": "bot_names",
+        "label": "Bot Name Mapping",
+        "description": "JSON dictionary: user_agent substring -> human-readable bot name. Used as value mappings in Top Bot User Agents table.",
+        "type": "constant",
+        "hide": 2,
+        "query": "{\"semrush.com\": \"SemrushBot\", \"bing.com/bingbot\": \"Bingbot (Microsoft)\", \"google.com/bot\": \"Googlebot\", \"yandex.com/bots\": \"YandexBot\", \"baiduspider\": \"Baiduspider\", \"ahrefsbot\": \"AhrefsBot\", \"mj12bot\": \"MJ12bot\", \"ClaudeBot\": \"ClaudeBot (Anthropic)\", \"GPTBot\": \"GPTBot (OpenAI)\", \"Bytespider\": \"Bytespider (ByteDance)\", \"Applebot\": \"Applebot\", \"petalbot\": \"PetalBot (Huawei)\", \"facebookexternalhit\": \"Facebook Crawler\", \"Twitterbot\": \"Twitterbot (X/Twitter)\", \"bot.html\": \"Bot (self-declared)\", \"spider.html\": \"Spider (self-declared)\", \"crawl.html\": \"Crawler (self-declared)\"}",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h"
+    ]
+  },
+  "timezone": "",
+  "title": "Bot Traffic",
+  "uid": "bot-traffic",
+  "version": 1
+}
