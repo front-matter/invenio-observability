@@ -20,9 +20,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - coolify
-
   victoriametrics:
     image: victoriametrics/victoria-metrics:v1.125.0
     expose:
@@ -41,98 +38,22 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - coolify
-
   vmagent:
     image: victoriametrics/vmagent:v1.125.0
     expose:
       - "8429"
-    # Optional override (e.g. in Coolify env vars): KEYCLOAK_METRICS_TARGET=my-keycloak:9000
-    environment:
-      - KEYCLOAK_METRICS_TARGET
-      - KEYCLOAK_METRICS_PATH
-    entrypoint:
-      - /bin/sh
-      - -lc
+    volumes:
+      - /data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro
     command:
-      - |
-        set -eu
-
-        # In some orchestrators (e.g. Coolify), container DNS and dependent services
-        # can take a moment to become available. vmagent may exit early if the
-        # remote-write target can't be resolved/reached at startup.
-        echo "Waiting for VictoriaMetrics to become reachable..."
-        until (wget --spider --quiet http://victoriametrics:8428/health 2>/dev/null || /bin/busybox wget --spider --quiet http://victoriametrics:8428/health 2>/dev/null); do
-          sleep 2
-        done
-
-        if [ -z "$${KEYCLOAK_METRICS_TARGET:-}" ]; then
-          KEYCLOAK_METRICS_TARGET="keycloak:9000"
-        fi
-
-        # Keycloak may expose metrics on different paths depending on version/config
-        # (commonly /metrics or /q/metrics). Default to /metrics.
-        if [ -z "$${KEYCLOAK_METRICS_PATH:-}" ]; then
-          KEYCLOAK_METRICS_PATH="/metrics"
-        fi
-
-        # Normalize path (must start with '/').
-        case "$$KEYCLOAK_METRICS_PATH" in
-          /*) : ;;
-          *) KEYCLOAK_METRICS_PATH="/$$KEYCLOAK_METRICS_PATH" ;;
-        esac
-
-        # Generate the vmagent scrape config at startup, so we don't need to mount
-        # a separate vmagent.yaml file.
-        cat > /tmp/vmagent.yaml <<EOF
-        global:
-          scrape_interval: 15s
-
-        scrape_configs:
-          - job_name: keycloak
-            metrics_path: $$KEYCLOAK_METRICS_PATH
-            relabel_configs:
-              - target_label: namespace
-                replacement: keycloak
-              - target_label: pod
-                replacement: keycloak
-              - target_label: container
-                replacement: keycloak
-            static_configs:
-              - targets:
-                  - $$KEYCLOAK_METRICS_TARGET
-
-          - job_name: node
-            static_configs:
-              - targets:
-                  - node-exporter:9100
-
-          - job_name: redis
-            relabel_configs:
-              - target_label: namespace
-                replacement: redis
-              - target_label: instance
-                replacement: redis-exporter:9121
-            static_configs:
-              - targets:
-                  - redis-exporter:9121
-
-          - job_name: traefik
-            static_configs:
-              - targets:
-                  - coolify-proxy:9101
-        EOF
-
-        exec /vmagent-prod \
-          -promscrape.config=/tmp/vmagent.yaml \
-          -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+      - -promscrape.config=/etc/vmagent/vmagent.yaml
+      - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
     depends_on:
-      - victoriametrics
-      - node-exporter
-      - redis-exporter
-    networks:
-      - coolify
+      victoriametrics:
+        condition: service_healthy
+      node-exporter:
+        condition: service_started
+      redis-exporter:
+        condition: service_started
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -148,10 +69,9 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.systemd'
       - '--collector.processes'
+      - '--log.level=warn'
     expose:
       - "9100"
-    networks:
-      - coolify
     restart: unless-stopped
     healthcheck:
       test:
@@ -168,8 +88,6 @@ services:
       - REDIS_ADDR=${REDIS_ADDR:-}
     expose:
       - "9121"
-    networks:
-      - coolify
     restart: unless-stopped
     healthcheck:
       test:
@@ -183,8 +101,6 @@ services:
   grafana:
     image: 'grafana/grafana:12.4.0'
     container_name: grafana
-    labels:
-      - "traefik.docker.network=coolify"
     environment:
       # use Postgres backend
       - GF_DATABASE_TYPE=postgres
@@ -201,6 +117,10 @@ services:
       - 'GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-}'
       - 'GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-}'
 
+      # Grafana 12 Drilldown apps are shipped as plugins.
+      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,victoriametrics-metrics-datasource,grafana-metricsdrilldown-app
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource,victoriametrics-metrics-datasource
+
       # disable local login for admin user and basic auth   
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}
@@ -214,10 +134,6 @@ services:
       - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
       - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=Admin
-
-      # Grafana 12 Drilldown apps are shipped as plugins.
-      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,victoriametrics-metrics-datasource,grafana-metricsdrilldown-app
-      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource,victoriametrics-metrics-datasource
       - KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}
       - KEYCLOAK_REALM_NAME=${KEYCLOAK_REALM_NAME:-}
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GF_AUTH_GENERIC_OAUTH_CLIENT_ID:-}'
@@ -229,8 +145,6 @@ services:
     volumes:
       - '/data/coolify/services/grafana/grafana-data:/var/lib/grafana'
       - '/data/coolify/services/grafana/provisioning:/etc/grafana/provisioning:ro'
-    networks:
-      - coolify
     ports:
       - '3000:3000'
     restart: unless-stopped
@@ -254,8 +168,6 @@ services:
       - '/data/coolify/services/vector/vector.toml:/etc/vector/vector.toml:ro'
       - '/data/coolify/services/geoip/GeoLite2-City.mmdb:/data/coolify/services/geoip/GeoLite2-City.mmdb:ro'
       - '/var/run/docker.sock:/var/run/docker.sock'
-    networks:
-      - coolify
     depends_on:
       - victorialogs
       - victoriametrics
@@ -268,44 +180,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-  oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:latest
-    environment:
-      - SERVICE_FQDN_OAUTH2PROXY_4180
-      - OAUTH2_PROXY_PROVIDER=keycloak-oidc
-      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OAUTH2_PROXY_OIDC_ISSUER_URL:-}
-      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-}
-      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET:-}
-      - OAUTH2_PROXY_REDIRECT_URL=${OAUTH2_PROXY_REDIRECT_URL:-}
-      - OAUTH2_PROXY_UPSTREAMS=http://victorialogs:9428
-      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
-      - OAUTH2_PROXY_COOKIE_SECRET=${OAUTH2_PROXY_COOKIE_SECRET:-}
-      - OAUTH2_PROXY_COOKIE_DOMAINS=${OAUTH2_PROXY_COOKIE_DOMAINS:-}
-      - OAUTH2_PROXY_EMAIL_DOMAINS=${OAUTH2_PROXY_EMAIL_DOMAINS:-}
-      - OAUTH2_PROXY_SCOPE=${OAUTH2_PROXY_SCOPE:-openid email profile}
-      - OAUTH2_PROXY_CODE_CHALLENGE_METHOD=S256
-      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
-      - OAUTH2_PROXY_BACKEND_LOGOUT_URL=https://auth.front-matter.de/realms/master/protocol/openid-connect/logout?id_token_hint={id_token}&post_logout_redirect_uri=https://rogue-scholar.org
-    expose:
-      - "4180"
-    networks:
-      - coolify
-    depends_on:
-      - victorialogs
-    restart: unless-stopped
-    healthcheck:
-      test:
-        - CMD
-        - /bin/oauth2-proxy
-        - --version
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
 volumes:
   vl-data: null
   grafana-data: null
   vector-config: null
-networks:
-  coolify:
-    external: true
