@@ -856,7 +856,7 @@
     },
     {
       "id": 7,
-      "type": "logs",
+      "type": "table",
       "title": "Live Bot Request Log",
       "description": "Real-time stream of requests matching the counter-robots pattern. Each row is one access-log entry. Use the $search filter to narrow by path, IP, or specific user-agent substring.",
       "gridPos": {
@@ -870,19 +870,151 @@
         "uid": "victorialogs"
       },
       "options": {
-        "dedupStrategy": "none",
-        "displayedFields": ["status", "method", "remote_addr", "user_agent_short", "path"],
-        "enableLogDetails": true,
-        "fontSize": "small",
-        "unwrappedColumns": true,
-        "prettifyLogMessage": true,
-        "showCommonLabels": true,
-        "showLabels": false,
-        "showTime": true,
-        "sortOrder": "Descending",
-        "syntaxHighlighting": true,
-        "timestampResolution": "ms",
-        "wrapLogMessage": false
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 150
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Status"
+              },
+              {
+                "id": "custom.width",
+                "value": 50
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "text",
+                      "value": null
+                    },
+                    {
+                      "color": "green",
+                      "value": 300
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 400
+                    },
+                    {
+                      "color": "red",
+                      "value": 500
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "method"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Method"
+              },
+              {
+                "id": "custom.width",
+                "value": 50
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "remote_addr"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "IP"
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "user_agent_short"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "User Agent"
+              },
+              {
+                "id": "custom.width",
+                "value": 320
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "path"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Path"
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
@@ -894,6 +1026,48 @@
           "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter _msg:~\".*$search.*\"",
           "queryType": "range",
           "refId": "A"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "extractFields",
+          "options": {
+            "source": "labels",
+            "format": "json",
+            "replace": false
+          }
+        },
+        {
+          "id": "convertFieldType",
+          "options": {
+            "conversions": [
+              {
+                "targetField": "status",
+                "destinationType": "number"
+              }
+            ]
+          }
+        },
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": ["Time", "status", "method", "remote_addr", "user_agent_short", "path"]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "indexByName": {
+              "Time": 0,
+              "status": 1,
+              "method": 2,
+              "remote_addr": 3,
+              "user_agent_short": 4,
+              "path": 5
+            }
+          }
         }
       ]
     }
