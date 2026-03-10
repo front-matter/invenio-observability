@@ -28,7 +28,7 @@ exclude_containers = [
 # containers are collected (unless excluded above).
 include_containers = [
 	"inveniordm-",
-	"inveniordm-worker-",
+	"inveniordmworker-",
 	"coolify-proxy",
 	"opensearch-",
 	"valkey-",
@@ -144,8 +144,8 @@ if trim_match != null {
 # With Coolify label: prefix + resource name (e.g. "inveniordm-web").
 # Without Coolify label (plain Docker Compose): use the container name directly.
 .component = if resource_lc != "" {
-	if starts_with(container_lc, "inveniordm-worker-") {
-		"inveniordm-worker-" + resource_lc
+	if starts_with(container_lc, "inveniordmworker-") {
+		"inveniordmworker-" + resource_lc
 	} else if starts_with(container_lc, "inveniordm-") {
 		"inveniordm-" + resource_lc
 	} else {
@@ -196,6 +196,7 @@ if msg != "" && starts_with(.component, "inveniordm-") {
 					ip_trim = if trim_match != null { string!(trim_match.v) } else { ip_first }
 					if ip_trim != "" {
 						.client_ip = ip_trim
+						.remote_addr = ip_trim
 					}
 				}
 			}
@@ -226,13 +227,24 @@ if msg != "" && starts_with(.component, "inveniordm-") {
 			}
 
 			rt_ms = to_float(access_json.duration_ms) ?? null
-			if !is_null(rt_ms) { .duration_seconds = float!(rt_ms) / 1000.0 }
+			if !is_null(rt_ms) {
+				.duration_seconds = float!(rt_ms) / 1000.0
+				.duration_ms = rt_ms
+			}
 
 			req_id = to_string(access_json.request_id) ?? ""
 			if req_id != "" { .request_id = req_id }
 
 			bytes = to_int(access_json.bytes_sent) ?? null
-			if !is_null(bytes) { .http_response_bytes = bytes }
+			if !is_null(bytes) {
+				.http_response_bytes = bytes
+				.bytes_sent = bytes
+			}
+
+			# Preserve original structlog field names for Grafana displayedFields.
+			.method = method_raw
+			.path = path_raw
+			.status = status_code_json
 		}
 	}
 
@@ -413,7 +425,6 @@ type = "loki"
 inputs = ["geoip_enrich"]
 endpoint = "http://victorialogs:9428/insert"
 encoding.codec = "json"
-encoding.except_fields = ["severity"]
 
 [sinks.loki.labels]
 app = "{{ app }}"

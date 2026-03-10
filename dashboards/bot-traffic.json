@@ -132,7 +132,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "A"
         }
@@ -205,7 +205,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment | stats by (_time:$__interval) count() if (user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\") as robots, count() as total",
+          "expr": "component:inveniordm environment:$environment | stats by (_time:$__interval) count() if (user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\") as robots, count() as total",
           "queryType": "statsRange",
           "refId": "A"
         }
@@ -291,7 +291,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "A"
         }
@@ -417,7 +417,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment _msg:~\"ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment _msg:~\"ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "A",
           "legendFormat": "AI / LLM"
@@ -428,7 +428,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment _msg:~\"google.com/bot|bing.com/bingbot|yandex.com/bots|baiduspider|ahrefsbot|semrush.com|mj12bot|petalbot\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment _msg:~\"google.com/bot|bing.com/bingbot|yandex.com/bots|baiduspider|ahrefsbot|semrush.com|mj12bot|petalbot\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "B",
           "legendFormat": "Search"
@@ -439,7 +439,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment _msg:~\"curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment _msg:~\"curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "C",
           "legendFormat": "Tools / Scripts"
@@ -450,7 +450,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "D",
           "legendFormat": "Other Robots"
@@ -645,7 +645,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "A",
-          "expr": "component:$app environment:$environment user_agent:~\"semrush.com\" | format \"SemrushBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com\" | format \"SemrushBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -655,7 +655,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "B",
-          "expr": "component:$app environment:$environment user_agent:~\"bing.com/bingbot\" | format \"bingbot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"bing.com/bingbot\" | format \"bingbot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -665,7 +665,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "C",
-          "expr": "component:$app environment:$environment user_agent:~\"google.com/bot\" | format \"Googlebot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"google.com/bot\" | format \"Googlebot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -675,7 +675,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "D",
-          "expr": "component:$app environment:$environment user_agent:~\"yandex.com/bots\" | format \"YandexBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"yandex.com/bots\" | format \"YandexBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -685,7 +685,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "E",
-          "expr": "component:$app environment:$environment user_agent:~\"[Bb]aiduspider\" | format \"Baiduspider\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Bb]aiduspider\" | format \"Baiduspider\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -695,7 +695,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "F",
-          "expr": "component:$app environment:$environment user_agent:~\"[Aa]hrefsbot\" | format \"AhrefsBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Aa]hrefsbot\" | format \"AhrefsBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -705,7 +705,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "G",
-          "expr": "component:$app environment:$environment user_agent:~\"[Mm][Jj]12[Bb]ot\" | format \"MJ12bot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Mm][Jj]12[Bb]ot\" | format \"MJ12bot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -715,7 +715,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "H",
-          "expr": "component:$app environment:$environment user_agent:~\"[Pp]etalbot\" | format \"PetalBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Pp]etalbot\" | format \"PetalBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -725,7 +725,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "I",
-          "expr": "component:$app environment:$environment user_agent:~\"ClaudeBot\" | format \"ClaudeBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"ClaudeBot\" | format \"ClaudeBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -735,7 +735,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "J",
-          "expr": "component:$app environment:$environment user_agent:~\"GPTBot\" | format \"GPTBot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"GPTBot\" | format \"GPTBot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -745,7 +745,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "K",
-          "expr": "component:$app environment:$environment user_agent:~\"Bytespider\" | format \"Bytespider\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"Bytespider\" | format \"Bytespider\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -755,7 +755,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "L",
-          "expr": "component:$app environment:$environment user_agent:~\"[Aa]pplebot\" | format \"Applebot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Aa]pplebot\" | format \"Applebot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -765,7 +765,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "M",
-          "expr": "component:$app environment:$environment user_agent:~\"facebookexternalhit\" | format \"facebookexternalhit\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"facebookexternalhit\" | format \"facebookexternalhit\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -775,7 +775,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "N",
-          "expr": "component:$app environment:$environment user_agent:~\"[Tt]witterbot\" | format \"Twitterbot\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"[Tt]witterbot\" | format \"Twitterbot\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -785,7 +785,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "O",
-          "expr": "component:$app environment:$environment user_agent:~\"bot.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"bot.html\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"bot.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"bot.html\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -795,7 +795,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "P",
-          "expr": "component:$app environment:$environment user_agent:~\"spider.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"spider.html\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"spider.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"spider.html\" as user_agent | stats by (user_agent) count() as hits"
         },
         {
           "datasource": {
@@ -805,7 +805,7 @@
           "editorMode": "code",
           "queryType": "instant",
           "refId": "Q",
-          "expr": "component:$app environment:$environment user_agent:~\"crawl.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"crawl.html\" as user_agent | stats by (user_agent) count() as hits"
+          "expr": "component:inveniordm environment:$environment user_agent:~\"crawl.html\" NOT user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot\" | format \"crawl.html\" as user_agent | stats by (user_agent) count() as hits"
         }
       ],
       "transformations": [
@@ -871,12 +871,17 @@
       },
       "options": {
         "dedupStrategy": "none",
+        "displayedFields": ["status", "method", "remote_addr", "user_agent_short", "path"],
         "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
+        "fontSize": "small",
+        "unwrappedColumns": true,
+        "prettifyLogMessage": true,
+        "showCommonLabels": true,
         "showLabels": false,
         "showTime": true,
         "sortOrder": "Descending",
+        "syntaxHighlighting": true,
+        "timestampResolution": "ms",
         "wrapLogMessage": false
       },
       "targets": [
@@ -886,7 +891,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter _msg:~\".*$search.*\"",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter _msg:~\".*$search.*\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -903,37 +908,6 @@
   ],
   "templating": {
     "list": [
-      {
-        "name": "app",
-        "label": "App",
-        "type": "custom",
-        "description": "Service (component field) to inspect. web-rogue-scholar is the default.",
-        "hide": 0,
-        "includeAll": false,
-        "multi": false,
-        "options": [
-          {
-            "selected": true,
-            "text": "rogue-scholar-web",
-            "value": "web-rogue-scholar"
-          },
-          {
-            "selected": false,
-            "text": "inveniordm-starter-web",
-            "value": "web-inveniordm-starter"
-          },
-          {
-            "selected": false,
-            "text": "keycloak",
-            "value": "keycloak"
-          }
-        ],
-        "current": {
-          "text": "rogue-scholar-web",
-          "value": "web-rogue-scholar"
-        },
-        "query": "web-rogue-scholar,web-inveniordm-starter,keycloak"
-      },
       {
         "name": "environment",
         "label": "Environment",
