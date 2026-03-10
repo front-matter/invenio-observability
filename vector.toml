@@ -8,40 +8,32 @@ address = "127.0.0.1:8686"
 type = "docker_logs"
 
 # Explicitly set the Docker endpoint. This avoids surprises if the runtime
-# injects a `DOCKER_HOST` env var pointing elsewhere.
-#
-# If you run rootless Docker, change this to your user socket, e.g.
-# `unix:///run/user/1000/docker.sock`, and mount that socket into the Vector
-# container.
 docker_host = "unix:///var/run/docker.sock"
 
-# Exclude sidecars and this observability stack itself.
+# Exclude observability stack itself.
 exclude_containers = [
-  # NOTE: `exclude_containers` uses prefix matching (not glob patterns).
-  # Excluding "sidecar" is useful when sidecars are named like "sidecar-...".
-  "sidecar",
-  "vector",
-  "vector-",
-  "victorialogs",
-  "victorialogs-",
-  "victoriametrics",
-  "victoriametrics-",
-  "grafana",
-  "grafana-",
+	# NOTE: `exclude_containers` uses prefix matching (not glob patterns).
+	"vector",
+	"vector-",
+	"victorialogs",
+	"victorialogs-",
+	"victoriametrics",
+	"victoriametrics-",
+	"grafana",
+	"grafana-",
 ]
 
 # Reduce noise: only collect logs for the relevant workloads.
 # NOTE: `include_containers` uses prefix matching. If set, only matching
 # containers are collected (unless excluded above).
 include_containers = [
-  "web-",
-  "worker-",
-  "coolify-proxy",
-  "opensearch-",
-  "valkey-",
-  "redis-",
-  "postgres-",
-  "keycloak-",
+	"inveniordm-",
+	"inveniordm-worker-",
+	"coolify-proxy",
+	"opensearch-",
+	"valkey-",
+	"postgres-",
+	"keycloak-",
 ]
 
 # IMPORTANT: `include_labels` on `docker_logs` is a *container filter* (expects
@@ -54,38 +46,15 @@ include_containers = [
 # Merge Docker partial log frames automatically.
 auto_partial_merge = true
 
-# Multiline handling (example: lines start with an ISO date).
-multiline.start_pattern = '^\d{4}-\d{2}-\d{2}'
-multiline.mode = "halt_before"
-multiline.condition_pattern = '^\d{4}-\d{2}-\d{2}'
-multiline.timeout_ms = 1000
-
 # -------- GeoIP database --------
 
 [enrichment_tables.geoip]
 type = "geoip"
 path = "/data/coolify/services/geoip/GeoLite2-City.mmdb"
 
-[transforms.keep_invenio_infra]
-type = "filter"
-inputs = ["docker_logs"]
-condition = '''
-container_name = string!(.container_name)
-container_lc = downcase(replace(container_name, "/", ""))
-image_raw = ""
-if is_string(.container_image) { image_raw = .container_image }
-if image_raw == "" && is_string(.image) { image_raw = .image }
-if image_raw == "" && is_object(.container) && is_string(.container.image) { image_raw = .container.image }
-if image_raw == "" && is_object(.docker) && is_string(.docker.image) { image_raw = .docker.image }
-
-image_lc = downcase(string!(image_raw))
-
-starts_with(container_lc, "web-") || starts_with(container_lc, "worker-") || container_lc == "coolify-proxy" || starts_with(container_lc, "opensearch-") || contains(image_lc, "opensearch") || starts_with(container_lc, "valkey-") || contains(image_lc, "valkey") || contains(image_lc, "redis") || contains(image_lc, "postgres") || starts_with(container_lc, "keycloak-") || contains(image_lc, "keycloak")
-'''
-
 [transforms.normalize]
 type = "remap"
-inputs = ["keep_invenio_infra"]
+inputs = ["docker_logs"]
 
 source = '''
 container_name = string!(.container_name)
@@ -109,9 +78,6 @@ if is_object(labels_src) {
 	labels_out."coolify.environmentName" = labels_src."coolify.environmentName"
 	labels_out."coolify.resourceName" = labels_src."coolify.resourceName"
 	labels_out."environment" = labels_src."environment"
-	labels_out."observability.environment" = labels_src."observability.environment"
-	labels_out."observability.env" = labels_src."observability.env"
-	labels_out."env" = labels_src."env"
 }
 
 # Provide flattened label fields used by strict detection.
@@ -154,14 +120,16 @@ if is_string(env_value) { env_raw = downcase(string!(env_value)) }
 	"production"
 } else if env_raw == "stage" || env_raw == "staging" {
 	"staging"
+} else if env_raw == "dev" || env_raw == "development" {
+	"development"
 } else {
 	"unknown"
 }
 container_lc = downcase(.container)
 
-# Component naming (strict):
-# - Base component comes ONLY from flattened label field `label_coolify_resourceName`.
-# - If the container name starts with `web-` or `worker-`, prefix the component with that.
+# Component naming:
+# - Primary: `label_coolify_resourceName` (set by Coolify; e.g. "web" → "inveniordm-web").
+# - Fallback (plain Docker Compose): container name is used as-is.
 resource_value = ""
 if exists(.label_coolify_resourceName) && is_string(.label_coolify_resourceName) {
 	resource_value = string!(.label_coolify_resourceName)
@@ -173,18 +141,18 @@ if trim_match != null {
 	resource_lc = string!(trim_match.v)
 }
 
-resource_component = if resource_lc != "" {
-	resource_lc
+# With Coolify label: prefix + resource name (e.g. "inveniordm-web").
+# Without Coolify label (plain Docker Compose): use the container name directly.
+.component = if resource_lc != "" {
+	if starts_with(container_lc, "inveniordm-worker-") {
+		"inveniordm-worker-" + resource_lc
+	} else if starts_with(container_lc, "inveniordm-") {
+		"inveniordm-" + resource_lc
+	} else {
+		resource_lc
+	}
 } else {
-	"unknown"
-}
-
-.component = if starts_with(container_lc, "web-") {
-	"web-" + resource_component
-} else if starts_with(container_lc, "worker-") {
-	"worker-" + resource_component
-} else {
-	resource_component
+	container_lc
 }
 
 # Detect log level (low cardinality). Works for common formats:
@@ -204,22 +172,25 @@ level_raw = null
 # Parse common HTTP access logs (combined format) to structured fields.
 # Example:
 # 172.18.0.2 - - [07/Mar/2026:13:00:41 +0000] "GET /static/favicon.ico HTTP/1.1" 200 0 "https://example.org/" "Mozilla/5.0 ..."
-if msg != "" && starts_with(.component, "web-") {
-	# Preferred: Gunicorn JSON access logs (GUNICORN_ACCESS_LOGFORMAT)
-	# Example:
-	# {"time":"[08/Mar/2026:09:30:47 +0000]","ip":"43.134.29.248","method":"GET","path":"/","query":"","status":200,...}
+if msg != "" && starts_with(.component, "inveniordm-") {
+	# Gunicorn structlog JSON access log — identified by event == "request".
+	# Fields emitted by StructlogGunicornLogger.access() in gunicorn.conf.py:
+	# {"event":"request","method":"GET","path":"/api","query":null,"status":200,
+	#  "duration_ms":45.2,"remote_addr":"1.2.3.4","user_agent":"...",
+	#  "request_id":"abc","bytes_sent":1234,"level":"info","logger":"gunicorn.access"}
 	access_json = parse_json(msg) ?? null
-	if is_object(access_json) {
+	if is_object(access_json) && (to_string(access_json.event) ?? "") == "request" {
 		method_raw = to_string(access_json.method) ?? ""
 		status_code_json = to_int(access_json.status) ?? null
 		path_raw = to_string(access_json.path) ?? ""
 
-		# Only treat as access log when it has the key fields.
+		# Only treat as access log when the key fields are present.
 		if method_raw != "" && !is_null(status_code_json) && path_raw != "" {
-			ip_raw = to_string(access_json.ip) ?? ""
+			# remote_addr is HTTP_X_FORWARDED_FOR (preferred) or REMOTE_ADDR;
+			# X-Forwarded-For can be a comma-separated list — keep the first entry.
+			ip_raw = to_string(access_json.remote_addr) ?? ""
 			if (!exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "")) {
 				if ip_raw != "" && ip_raw != "-" {
-					# x-forwarded-for may contain a comma-separated list; keep the first IP.
 					ip_first = split(ip_raw, ",")[0]
 					trim_match = parse_regex(ip_first, r'^\s*(?P<v>.*?)\s*$') ?? null
 					ip_trim = if trim_match != null { string!(trim_match.v) } else { ip_first }
@@ -247,11 +218,6 @@ if msg != "" && starts_with(.component, "web-") {
 				}
 			}
 
-			referer_raw = to_string(access_json.referer) ?? ""
-			if referer_raw != "" && referer_raw != "-" {
-				.http_referer = referer_raw
-			}
-
 			ua_raw = to_string(access_json.user_agent) ?? ""
 			if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) {
 				if ua_raw != "" && ua_raw != "-" {
@@ -259,77 +225,14 @@ if msg != "" && starts_with(.component, "web-") {
 				}
 			}
 
-			rt = to_float(access_json.request_time) ?? null
-			if !is_null(rt) {
-				.duration_seconds = rt
-			}
-		}
-	}
+			rt_ms = to_float(access_json.duration_ms) ?? null
+			if !is_null(rt_ms) { .duration_seconds = float!(rt_ms) / 1000.0 }
 
-	access = parse_regex(msg, r'^(?P<ip>\S+)\s+\S+\s+\S+\s+\[[^\]]+\]\s+"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/(?P<httpver>[^\"]+)"\s+(?P<status>\d{3})\s+(?P<bytes>\d+|-)\s+"(?P<referer>[^\"]*)"\s+"(?P<ua>[^\"]*)"') ?? null
-	if access != null {
-		# Client IP
-		if !exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "") {
-			ip_raw = string!(access.ip)
-			if ip_raw != "" && ip_raw != "-" {
-				.client_ip = ip_raw
-			}
-		}
+			req_id = to_string(access_json.request_id) ?? ""
+			if req_id != "" { .request_id = req_id }
 
-		# Method / status / referer / UA
-		if !exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "") {
-			.http_method = downcase(string!(access.method))
-		}
-		status_code = to_int(access.status) ?? null
-		if !is_null(status_code) {
-			.http_status = status_code
-		}
-		if (!exists(.http_target) || is_null(.http_target) || (is_string(.http_target) && string!(.http_target) == "")) {
-			.http_target = string!(access.target)
-		}
-		referer_raw = string!(access.referer)
-		if referer_raw != "" && referer_raw != "-" {
-			.http_referer = referer_raw
-		}
-		ua_raw = string!(access.ua)
-		if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) {
-			if ua_raw != "" && ua_raw != "-" {
-				.user_agent = ua_raw
-			}
-		}
-	}
-
-	# Fallback: extract request URL from the request line even if the full combined
-	# format regex didn't match.
-	if (!exists(.http_target) || is_null(.http_target) || (is_string(.http_target) && string!(.http_target) == "")) {
-		req_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+(?P<target>[^\s]+)\s+HTTP\/[^"]+"') ?? null
-		if req_match != null {
-			.http_target = string!(req_match.target)
-			if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
-				.http_method = downcase(string!(req_match.method))
-			}
-		}
-	}
-
-	# Fallback: extract referer from the quoted field after status/bytes.
-	if (!exists(.http_referer) || is_null(.http_referer) || (is_string(.http_referer) && string!(.http_referer) == "")) {
-		referer_match = parse_regex(msg, r'"\s+\d{3}\s+(?:\d+|-)\s+"(?P<referer>[^"]*)"') ?? null
-		if referer_match != null {
-			referer_raw2 = string!(referer_match.referer)
-			if referer_raw2 != "" && referer_raw2 != "-" {
-				.http_referer = referer_raw2
-			}
-		}
-	}
-
-	# Fallback: extract client IP from the first token.
-	if (!exists(.client_ip) || is_null(.client_ip) || (is_string(.client_ip) && string!(.client_ip) == "")) {
-		ip_match = parse_regex(msg, r'^(?P<ip>\S+)\s+') ?? null
-		if ip_match != null {
-			ip_raw2 = string!(ip_match.ip)
-			if ip_raw2 != "" && ip_raw2 != "-" {
-				.client_ip = ip_raw2
-			}
+			bytes = to_int(access_json.bytes_sent) ?? null
+			if !is_null(bytes) { .http_response_bytes = bytes }
 		}
 	}
 
@@ -341,30 +244,8 @@ if msg != "" && starts_with(.component, "web-") {
 	}
 }
 
-# Extract optional user-agent from common HTTP access log lines, e.g.
-# 172.18.0.2 - - [..] "GET / HTTP/1.1" 200 26402 "-" "SentryUptimeBot/1.0 ..."
-# Keep it as a field (not a Loki label) to avoid label-cardinality explosion.
-if (!exists(.user_agent) || is_null(.user_agent) || (is_string(.user_agent) && string!(.user_agent) == "")) && msg != "" && starts_with(.component, "web-") {
-	ua_match = parse_regex(msg, r'"[A-Z]+\s+[^\s]+\s+HTTP\/[^\"]+"\s+\d{3}\s+\d+\s+"[^\"]*"\s+"(?P<ua>[^\"]*)"\s*$') ?? null
-	if ua_match != null {
-		ua_raw = string!(ua_match.ua)
-		if ua_raw != "" && ua_raw != "-" {
-			.user_agent = ua_raw
-		}
-	}
-}
-
-# Extract HTTP verb from access logs (GET/POST/PUT/...), normalized to lowercase.
-if (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) && msg != "" && starts_with(.component, "web-") {
-	method_match = parse_regex(msg, r'"(?P<method>[A-Z]+)\s+[^\s]+\s+HTTP\/[^\"]+"') ?? null
-	if method_match != null {
-		.http_method = downcase(string!(method_match.method))
-	}
-}
-
-# Ensure http_method is always present for web-* logs so dashboard filtering
-# doesn't accidentally drop events.
-if starts_with(.component, "web-") && (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
+# Ensure http_method is always present for inveniordm-* access logs.
+if starts_with(.component, "inveniordm-") && (!exists(.http_method) || is_null(.http_method) || (is_string(.http_method) && string!(.http_method) == "")) {
 	.http_method = "get"
 }
 
@@ -375,7 +256,7 @@ if !exists(.http_method) || is_null(.http_method) || (is_string(.http_method) &&
 }
 
 # Truncate user-agent for dashboard display.
-if starts_with(.component, "web-") && exists(.user_agent) && is_string(.user_agent) {
+if starts_with(.component, "inveniordm-") && exists(.user_agent) && is_string(.user_agent) {
 	ua_full = string!(.user_agent)
 	if ua_full != "" {
 		ua_short_match = parse_regex(ua_full, r'^(?P<ua>.{0,40})') ?? null
@@ -390,17 +271,22 @@ if is_string(.level) {
 } else if is_object(.log) && is_string(.log.level) {
 	level_raw = .log.level
 } else {
-	parsed = parse_regex(msg, r'(?i)\blevel=(?P<level>trace|debug|info|warn|warning|error|fatal|panic)\b') ?? null
-	if parsed != null {
-		level_raw = parsed.level
+	parsed_json = parse_json(msg) ?? null
+	if is_object(parsed_json) && is_string(parsed_json.level) {
+		level_raw = parsed_json.level
 	} else {
-		parsed = parse_regex(msg, r'(?i)^\[[^\]]+\]\[(?P<level>trace|debug|info|warn|warning|error|fatal)\s*\]') ?? null
+		parsed = parse_regex(msg, r'(?i)\blevel=(?P<level>trace|debug|info|warn|warning|error|fatal|panic)\b') ?? null
 		if parsed != null {
 			level_raw = parsed.level
 		} else {
-			parsed = parse_regex(msg, r'(?i)\b(?P<level>log|info|notice|warning|error|fatal|panic):') ?? null
+			parsed = parse_regex(msg, r'(?i)^\[[^\]]+\]\[(?P<level>trace|debug|info|warn|warning|error|fatal)\s*\]') ?? null
 			if parsed != null {
 				level_raw = parsed.level
+			} else {
+				parsed = parse_regex(msg, r'(?i)\b(?P<level>log|info|notice|warning|error|fatal|panic):') ?? null
+				if parsed != null {
+					level_raw = parsed.level
+				}
 			}
 		}
 	}
@@ -425,10 +311,10 @@ if is_string(level_raw) { level_norm = downcase(string!(level_raw)) }
 }
 
 # Access logs often don't contain an explicit level; infer it from HTTP status.
-if .severity == "unknown" && starts_with(.component, "web-") {
+if .severity == "unknown" && starts_with(.component, "inveniordm-") {
 	status_code = null
 	if exists(.http_status) {
-		status_code = to_int(.http_status) ?? null
+		status_code = to_int!(.http_status)
 	} else {
 		status_match = parse_regex(msg, r'"\s+(?P<status>\d{3})\s+') ?? null
 		if status_match != null {
@@ -466,7 +352,18 @@ app_raw = .project
 # JSON-encoded events via Loki ingestion, ensure `_msg` is present so Grafana
 # doesn't display the default "missing _msg field" placeholder.
 if (!exists(._msg) || is_null(._msg) || (is_string(._msg) && string!(._msg) == "")) && msg != "" {
-	._msg = msg
+	parsed_json = parse_json(msg) ?? null
+	if is_object(parsed_json) && is_string(parsed_json.event) {
+		event_str = string!(parsed_json.event)
+		# For gunicorn access logs, produce a concise summary rather than the bare "request" event.
+		if event_str == "request" && exists(.http_method) && exists(.http_status) && exists(.http_target) {
+			._msg = upcase(string!(.http_method)) + " " + string!(.http_target) + " " + to_string!(.http_status)
+		} else {
+			._msg = event_str
+		}
+	} else {
+		._msg = msg
+	}
 }
 '''
 
@@ -480,8 +377,8 @@ source = '''
 component = to_string(.component) ?? ""
 client_ip = to_string(.client_ip) ?? ""
 
-if starts_with(component, "web-") {
-	# Ensure the label exists for all web logs so Grafana variables like
+if starts_with(component, "inveniordm-") {
+	# Ensure the label exists for all inveniordm logs so Grafana variables like
 	# `country=~".*"` don't drop events that have no GeoIP match.
 	if (!exists(.country) || is_null(.country) || (is_string(.country) && string!(.country) == "")) {
 		.country = "unknown"
