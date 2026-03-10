@@ -315,7 +315,6 @@
       "options": {
         "legend": {
           "calcs": [
-            "mean",
             "max",
             "sum"
           ],
@@ -417,7 +416,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:inveniordm environment:$environment _msg:~\"ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "A",
           "legendFormat": "AI / LLM"
@@ -428,7 +427,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:inveniordm environment:$environment _msg:~\"google.com/bot|bing.com/bingbot|yandex.com/bots|baiduspider|ahrefsbot|semrush.com|mj12bot|petalbot\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"google.com/bot|bing.com/bingbot|yandex.com/bots|baiduspider|ahrefsbot|semrush.com|mj12bot|petalbot\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "B",
           "legendFormat": "Search"
@@ -439,7 +438,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:inveniordm environment:$environment _msg:~\"curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia\" | stats by (_time:$__interval) count() as hits",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia\" | stats by (_time:$__interval) count() as hits",
           "queryType": "statsRange",
           "refId": "C",
           "legendFormat": "Tools / Scripts"
@@ -983,13 +982,23 @@
               {
                 "id": "custom.width",
                 "value": 130
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by this IP",
+                    "url": "/d/bot-traffic/bot-traffic?${__url_time_range}&var-environment=${environment}&var-search=${__value.text}",
+                    "targetBlank": false
+                  }
+                ]
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "user_agent_short"
+              "options": "user_agent"
             },
             "properties": [
               {
@@ -998,7 +1007,48 @@
               },
               {
                 "id": "custom.width",
-                "value": 320
+                "value": 400
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "ClaudeBot|GPTBot|Bytespider|Applebot|PerplexityBot|cohere-ai|AmazonBot",
+                      "result": {
+                        "color": "#FF7383",
+                        "index": 0
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "google\\.com/bot|bing\\.com/bingbot|[Yy]andex|[Bb]aiduspider|[Aa]hrefsbot|semrush\\.com|[Mm][Jj]12[Bb]ot|[Pp]etalbot",
+                      "result": {
+                        "color": "#5794F2",
+                        "index": 1
+                      }
+                    }
+                  },
+                  {
+                    "type": "regex",
+                    "options": {
+                      "pattern": "curl/|python-requests|Scrapy|wget/|urllib|okhttp|axios/|Postman|insomnia",
+                      "result": {
+                        "color": "#EAB839",
+                        "index": 2
+                      }
+                    }
+                  }
+                ]
               }
             ]
           },
@@ -1023,7 +1073,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter _msg:~\".*$search.*\"",
+          "expr": "component:inveniordm environment:$environment user_agent:~\"semrush.com|bing.com/bingbot|google.com/bot|yandex.com/bots|baiduspider|ahrefsbot|mj12bot|ClaudeBot|GPTBot|Bytespider|Applebot|petalbot|facebookexternalhit|Twitterbot|bot.html|spider.html|crawl.html\" | filter (user_agent:~\".*$search.*\" OR path:~\".*$search.*\" OR remote_addr:~\".*$search.*\")",
           "queryType": "range",
           "refId": "A"
         }
@@ -1052,7 +1102,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "names": ["Time", "status", "method", "remote_addr", "user_agent_short", "path"]
+              "names": ["Time", "status", "method", "remote_addr", "user_agent", "path"]
             }
           }
         },
@@ -1064,7 +1114,7 @@
               "status": 1,
               "method": 2,
               "remote_addr": 3,
-              "user_agent_short": 4,
+              "user_agent": 4,
               "path": 5
             }
           }
