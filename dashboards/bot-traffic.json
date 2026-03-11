@@ -91,7 +91,7 @@
       "description": "Total log entries matching the counter-robots user-agent pattern in the selected time range.",
       "gridPos": {
         "h": 4,
-        "w": 6,
+        "w": 5,
         "x": 0,
         "y": 0
       },
@@ -151,12 +151,12 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "Bot Traffic Share",
+      "title": "Bot Share",
       "description": "Robot requests as a percentage of all requests from $app. High share is normal for public repositories; spikes above baseline indicate crawl storms.",
       "gridPos": {
         "h": 4,
         "w": 5,
-        "x": 6,
+        "x": 5,
         "y": 0
       },
       "datasource": {
@@ -243,7 +243,7 @@
       "gridPos": {
         "h": 4,
         "w": 5,
-        "x": 11,
+        "x": 10,
         "y": 0
       },
       "datasource": {
@@ -314,7 +314,7 @@
       "description": "Volume of robot-matched log entries per interval. Compare shape with human traffic patterns: flat baseline = normal crawling; sharp step-up = new crawler or crawl storm.",
       "gridPos": {
         "h": 12,
-        "w": 16,
+        "w": 15,
         "x": 0,
         "y": 4
       },
@@ -473,8 +473,8 @@
       "description": "Most frequent user-agent strings matched by the robot filter. High repeat counts from a non-indexer UA (curl, python-requests, axios) warrant investigation.",
       "gridPos": {
         "h": 16,
-        "w": 8,
-        "x": 16,
+        "w": 9,
+        "x": 15,
         "y": 0
       },
       "datasource": {
@@ -925,7 +925,7 @@
             "properties": [
               {
                 "id": "displayName",
-                "value": "Status"
+                "value": "S"
               },
               {
                 "id": "custom.width",
@@ -966,22 +966,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "method"
-            },
-            "properties": [
-              {
-                "id": "displayName",
-                "value": "Method"
-              },
-              {
-                "id": "custom.width",
-                "value": 50
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "remote_addr"
             },
             "properties": [
@@ -1014,10 +998,6 @@
               {
                 "id": "displayName",
                 "value": "User Agent"
-              },
-              {
-                "id": "custom.width",
-                "value": 400
               },
               {
                 "id": "custom.cellOptions",
@@ -1083,6 +1063,10 @@
                 "value": "Path"
               },
               {
+                "id": "custom.width",
+                "value": 320
+              },
+              {
                 "id": "links",
                 "value": [
                   {
@@ -1132,7 +1116,7 @@
           "id": "filterFieldsByName",
           "options": {
             "include": {
-              "names": ["Time", "status", "method", "remote_addr", "user_agent", "path"]
+              "names": ["Time", "status", "remote_addr", "path", "user_agent"]
             }
           }
         },
@@ -1142,10 +1126,9 @@
             "indexByName": {
               "Time": 0,
               "status": 1,
-              "method": 2,
-              "remote_addr": 3,
-              "user_agent": 4,
-              "path": 5
+              "remote_addr": 2,
+              "path": 3,
+              "user_agent": 4
             }
           }
         }
@@ -1195,7 +1178,7 @@
       },
       {
         "name": "search",
-        "label": "Search (path / IP / UA)",
+        "label": "Search",
         "type": "textbox",
         "hide": 0,
         "query": "",

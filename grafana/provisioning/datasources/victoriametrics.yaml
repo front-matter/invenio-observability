@@ -9,5 +9,9 @@ datasources:
     url: http://victoriametrics:8428
     isDefault: false
     editable: false
+    basicAuth: true
+    basicAuthUser: ${VM_AUTH_USERNAME}
     jsonData:
       httpMethod: POST
+    secureJsonData:
+      basicAuthPassword: ${VM_AUTH_PASSWORD}
