@@ -72,7 +72,17 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "title": "Clear Search",
+      "url": "/d/bot-traffic/bot-traffic?${__url_time_range}&var-environment=${environment}&var-search=",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Reset the search filter",
+      "targetBlank": false,
+      "tags": []
+    }
+  ],
   "panels": [
     {
       "id": 1,
@@ -1049,6 +1059,16 @@
                     }
                   }
                 ]
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by this User Agent",
+                    "url": "/d/bot-traffic/bot-traffic?${__url_time_range}&var-environment=${environment}&var-search=${__value.text}",
+                    "targetBlank": false
+                  }
+                ]
               }
             ]
           },
@@ -1061,6 +1081,16 @@
               {
                 "id": "displayName",
                 "value": "Path"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Filter by this Path",
+                    "url": "/d/bot-traffic/bot-traffic?${__url_time_range}&var-environment=${environment}&var-search=${__value.text}",
+                    "targetBlank": false
+                  }
+                ]
               }
             ]
           }
