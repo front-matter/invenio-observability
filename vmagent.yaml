@@ -3,8 +3,8 @@ global:
 
 scrape_configs:
   - job_name: keycloak
-    # Target uses the Docker network alias 'keycloak-production' defined in
-    # the Keycloak production service compose (coolify network aliases).
+    # Target is configured via KEYCLOAK_METRICS_TARGET env var on the vmagent
+    # container (set in Coolify UI), e.g. keycloak-g4s80c4og8o84ckc4g0gkkwk:9000
     metrics_path: /metrics
     relabel_configs:
       - target_label: namespace
@@ -15,7 +15,7 @@ scrape_configs:
         replacement: keycloak
     static_configs:
       - targets:
-          - keycloak-production:9000
+          - "%{KEYCLOAK_METRICS_TARGET}"
 
   - job_name: node
     static_configs:
@@ -31,6 +31,18 @@ scrape_configs:
     static_configs:
       - targets:
           - redis-exporter:9121
+
+  - job_name: postgres
+    relabel_configs:
+      - target_label: namespace
+        replacement: postgres
+      - target_label: instance
+        replacement: postgres-exporter:9187
+      - target_label: environment
+        replacement: staging
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
 
   - job_name: traefik
     static_configs:

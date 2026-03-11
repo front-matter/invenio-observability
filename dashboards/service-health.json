@@ -274,7 +274,8 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum(rate(pg_stat_database_xact_commit[$__interval]) + rate(pg_stat_database_xact_rollback[$__interval]))",
+          "expr": "sum by (environment) (rate(pg_stat_database_xact_commit{environment=~\"$environment\", environment!=\"\", job=\"postgres\"}[$__interval]) + rate(pg_stat_database_xact_rollback{environment=~\"$environment\", environment!=\"\", job=\"postgres\"}[$__interval]))",
+          "legendFormat": "{{environment}}",
           "refId": "A"
         }
       ]
@@ -753,7 +754,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:$environment (log_level:error OR log_level:warn) _msg:~\"$search\"",
+          "expr": "component:$app environment:~\"$environment\" (log_level:error OR log_level:warn) _msg:~\"$search\"",
           "queryType": "instant",
           "refId": "A"
         }
@@ -828,7 +829,7 @@
         "description": "Filter by deployment environment.",
         "hide": 0,
         "includeAll": true,
-        "allValue": "*",
+        "allValue": ".*",
         "multi": false,
         "options": [
           {

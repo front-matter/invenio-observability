@@ -28,12 +28,14 @@ services:
       - "8428"
     volumes:
       - /data/coolify/services/victoriametrics/vm-data:/storage
+      - /data/coolify/services/victoriametrics/relabel.yaml:/etc/vm/relabel.yaml:ro
     command:
       - -storageDataPath=/storage
       - -retentionPeriod=3
       - -httpListenAddr=:8428
       - -httpAuth.username=${VM_AUTH_USERNAME:-}
       - -httpAuth.password=${VM_AUTH_PASSWORD:-}
+      - -relabelConfig=/etc/vm/relabel.yaml
     healthcheck:
       test:
         - CMD-SHELL
@@ -46,6 +48,8 @@ services:
     image: victoriametrics/vmagent:v1.125.0
     expose:
       - "8429"
+    environment:
+      - KEYCLOAK_METRICS_TARGET=${KEYCLOAK_METRICS_TARGET:-keycloak:9000}
     volumes:
       - /data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro
     command:
@@ -59,6 +63,8 @@ services:
       node-exporter:
         condition: service_started
       redis-exporter:
+        condition: service_started
+      postgres-exporter:
         condition: service_started
 
   node-exporter:
@@ -99,6 +105,28 @@ services:
       test:
         - CMD-SHELL
         - 'wget --spider --quiet http://127.0.0.1:9121/metrics 2>/dev/null || exit 1'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    # Scrapes the Coolify-hosted Postgres.
+    # Set DATA_SOURCE_NAME in Coolify UI, e.g.:
+    #   postgresql://postgres:<password>@k08ggcgk8wkc44g4ckocgwgk:5432/postgres?sslmode=disable
+    environment:
+      - DATA_SOURCE_NAME=${DATA_SOURCE_NAME:-}
+    networks:
+      - default
+      - coolify
+    expose:
+      - "9187"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget --spider --quiet http://127.0.0.1:9187/metrics 2>/dev/null || exit 1'
       interval: 30s
       timeout: 5s
       retries: 3
@@ -190,3 +218,7 @@ volumes:
   vl-data: null
   grafana-data: null
   vector-config: null
+
+networks:
+  coolify:
+    external: true
