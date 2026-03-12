@@ -502,11 +502,12 @@
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.1 }
+              { "color": "yellow", "value": 0.001 },
+              { "color": "red", "value": 0.05 }
             ]
           },
           "mappings": [],
+          "decimals": 1,
           "unit": "percentunit",
           "noValue": "0",
           "min": 0,
@@ -564,11 +565,12 @@
             "mode": "absolute",
             "steps": [
               { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.1 }
+              { "color": "yellow", "value": 0.001 },
+              { "color": "red", "value": 0.05 }
             ]
           },
           "mappings": [],
+          "decimals": 1,
           "unit": "percentunit",
           "noValue": "0",
           "min": 0,
