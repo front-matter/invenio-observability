@@ -43,6 +43,21 @@ scrape_configs:
       - targets:
           - postgres-exporter:9187
 
+  - job_name: inveniordm
+    # Scrapes the InvenioRDM prometheus-flask-exporter metrics endpoint.
+    # Set INVENIO_METRICS_TARGET (e.g. inveniordm-*:5000)
+    # in Coolify UI.
+    metrics_path: /api/metrics
+    scheme: http
+    relabel_configs:
+      - target_label: job
+        replacement: inveniordm
+      - target_label: namespace
+        replacement: inveniordm
+    static_configs:
+      - targets:
+          - "%{INVENIO_METRICS_TARGET}"
+
   - job_name: opensearch
     relabel_configs:
       - target_label: namespace
