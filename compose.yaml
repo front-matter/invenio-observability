@@ -33,8 +33,6 @@ services:
       - -storageDataPath=/storage
       - -retentionPeriod=3
       - -httpListenAddr=:8428
-      - -httpAuth.username=${VM_AUTH_USERNAME:-}
-      - -httpAuth.password=${VM_AUTH_PASSWORD:-}
       - -relabelConfig=/etc/vm/relabel.yaml
     healthcheck:
       test:
@@ -55,8 +53,6 @@ services:
     command:
       - -promscrape.config=/etc/vmagent/vmagent.yaml
       - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
-      - -remoteWrite.basicAuth.username=${VM_AUTH_USERNAME:-}
-      - -remoteWrite.basicAuth.password=${VM_AUTH_PASSWORD:-}
     depends_on:
       victoriametrics:
         condition: service_healthy
