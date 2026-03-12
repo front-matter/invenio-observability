@@ -493,18 +493,6 @@
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
       },
-      "options": {
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "minVizHeight": 75,
-        "minVizWidth": 75
-      },
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -537,7 +525,19 @@
           "refId": "A"
         }
       ],
-      "transformations": []
+      "transformations": [],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizHeight": 75,
+        "minVizWidth": 75
+      }
     },
     {
       "id": 15,
@@ -553,18 +553,6 @@
       "datasource": {
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": ["lastNotNull"],
-          "fields": "",
-          "values": false
-        },
-        "orientation": "auto",
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "minVizHeight": 75,
-        "minVizWidth": 75
       },
       "fieldConfig": {
         "defaults": {
@@ -598,7 +586,19 @@
           "refId": "A"
         }
       ],
-      "transformations": []
+      "transformations": [],
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizHeight": 75,
+        "minVizWidth": 75
+      }
     },
     {
       "id": 16,
@@ -1033,5 +1033,5 @@
   "timezone": "",
   "title": "Service Health",
   "uid": "service-health",
-  "version": 30
+  "version": 37
 }
