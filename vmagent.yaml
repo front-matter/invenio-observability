@@ -54,6 +54,8 @@ scrape_configs:
         replacement: inveniordm
       - target_label: namespace
         replacement: inveniordm
+      - target_label: environment
+        replacement: production
     static_configs:
       - targets:
           - "%{INVENIO_METRICS_TARGET}"
@@ -72,3 +74,11 @@ scrape_configs:
     static_configs:
       - targets:
           - coolify-proxy:9101
+
+  - job_name: celery
+    relabel_configs:
+      - target_label: namespace
+        replacement: celery
+    static_configs:
+      - targets:
+          - "%{CELERY_EXPORTER_TARGET}"
