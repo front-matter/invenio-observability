@@ -218,5 +218,5 @@ compose-extra.yaml
 celery-by-task.json
 celery-overview.json
 flask-dashboard.json
-
+inveniordm-requests.json
 tools/*
