@@ -1,17 +1,16 @@
-# Docker Compose configuration for InvenioRDM observability stack
-# configuration files are stored under /data/coolify/services
-
 services:
   victorialogs:
-    image: victoriametrics/victoria-logs:v1.47.0
+    image: 'victoriametrics/victoria-logs:v1.47.0'
     expose:
-      - "9428"
+      - '9428'
     volumes:
-      - /data/coolify/services/victorialogs/vl-data:/vlogs
+      - '/data/coolify/services/victorialogs/vl-data:/vlogs'
     command:
-      - -storageDataPath=/vlogs
-      - -retentionPeriod=3
-      - -httpListenAddr=:9428
+      - '-storageDataPath=/vlogs'
+      - '-retentionPeriod=3'
+      - '-httpListenAddr=:9428'
+    networks:
+      - coolify
     healthcheck:
       test:
         - CMD-SHELL
@@ -21,19 +20,18 @@ services:
       retries: 5
       start_period: 10s
   victoriametrics:
-    image: victoriametrics/victoria-metrics:v1.125.0
-    environment:
-      - SERVICE_FQDN_VICTORIAMETRICS_8428
+    image: 'victoriametrics/victoria-metrics:v1.125.0'
     expose:
-      - "8428"
+      - '8428'
     volumes:
-      - /data/coolify/services/victoriametrics/vm-data:/storage
-      - /data/coolify/services/victoriametrics/relabel.yaml:/etc/vm/relabel.yaml:ro
+      - '/data/coolify/services/victoriametrics/vm-data:/storage'
+      - '/data/coolify/services/victoriametrics/relabel.yaml:/etc/vm/relabel.yaml:ro'
     command:
-      - -storageDataPath=/storage
-      - -retentionPeriod=3
-      - -httpListenAddr=:8428
-      - -relabelConfig=/etc/vm/relabel.yaml
+      - '-storageDataPath=/storage'
+      - '-retentionPeriod=3'
+      - '-httpListenAddr=:8428'
+    networks:
+      - coolify
     healthcheck:
       test:
         - CMD-SHELL
@@ -43,33 +41,30 @@ services:
       retries: 5
       start_period: 10s
   vmagent:
-    image: victoriametrics/vmagent:v1.125.0
+    image: 'victoriametrics/vmagent:v1.125.0'
     expose:
-      - "8429"
+      - '8429'
     environment:
-      - KEYCLOAK_METRICS_TARGET=${KEYCLOAK_METRICS_TARGET:-keycloak:9000}
+      - 'KEYCLOAK_METRICS_TARGET=${KEYCLOAK_METRICS_TARGET:-keycloak:9000}'
     volumes:
-      - /data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro
+      - '/data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro'
     command:
-      - -promscrape.config=/etc/vmagent/vmagent.yaml
-      - -remoteWrite.url=http://victoriametrics:8428/api/v1/write
+      - '-promscrape.config=/etc/vmagent/vmagent.yaml'
+      - '-remoteWrite.url=http://victoriametrics:8428/api/v1/write'
+    networks:
+      - coolify
     depends_on:
       victoriametrics:
         condition: service_healthy
       node-exporter:
         condition: service_started
-      redis-exporter:
-        condition: service_started
-      postgres-exporter:
-        condition: service_started
-
   node-exporter:
-    image: prom/node-exporter:latest
+    image: 'prom/node-exporter:latest'
     pid: host
     volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
+      - '/proc:/host/proc:ro'
+      - '/sys:/host/sys:ro'
+      - '/:/rootfs:ro'
     command:
       - '--path.procfs=/host/proc'
       - '--path.sysfs=/host/sys'
@@ -77,9 +72,10 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
       - '--collector.systemd'
       - '--collector.processes'
-      - '--log.level=warn'
+    networks:
+      - coolify
     expose:
-      - "9100"
+      - '9100'
     restart: unless-stopped
     healthcheck:
       test:
@@ -89,36 +85,15 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-  redis-exporter:
-    image: oliver006/redis_exporter:latest
-    environment:
-      - REDIS_ADDR=${REDIS_ADDR:-}
-    expose:
-      - "9121"
-    restart: unless-stopped
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - 'wget --spider --quiet http://127.0.0.1:9121/metrics 2>/dev/null || exit 1'
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    # Scrapes the Coolify-hosted Postgres.
-    # Set DATA_SOURCE_NAME in Coolify UI, e.g.:
-    #   postgresql://postgres:<password>@k08ggcgk8wkc44g4ckocgwgk:5432/postgres?sslmode=disable
+    image: 'prometheuscommunity/postgres-exporter:latest'
     environment:
-      - DATA_SOURCE_NAME=${DATA_SOURCE_NAME:-}
-    networks:
-      - default
-      - coolify
+      - 'DATA_SOURCE_NAME=${DATA_SOURCE_NAME:-}'
     expose:
-      - "9187"
+      - '9187'
     restart: unless-stopped
+    networks:
+      - coolify
     healthcheck:
       test:
         - CMD-SHELL
@@ -127,51 +102,41 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
   grafana:
     image: 'grafana/grafana:12.4.0'
     container_name: grafana
     environment:
-      # use Postgres backend
       - GF_DATABASE_TYPE=postgres
       - GF_DATABASE_NAME=grafana
       - 'GF_DATABASE_HOST=${GF_DATABASE_HOST:-}'
       - 'GF_DATABASE_USER=${GF_DATABASE_USER:-}'
       - 'GF_DATABASE_PASSWORD=${GF_DATABASE_PASSWORD:-}'
-
-      # enable SMTP for notifications
-      - GF_SMTP_ENABLED=${GF_SMTP_ENABLED:-true}
+      - 'GF_SMTP_ENABLED=${GF_SMTP_ENABLED:-true}'
       - 'GF_SMTP_HOST=${GF_SMTP_HOST:-}'
       - 'GF_SMTP_USER=${GF_SMTP_USER:-}'
       - 'GF_SMTP_PASSWORD=${GF_SMTP_PASSWORD:-}'
       - 'GF_SMTP_FROM_ADDRESS=${GF_SMTP_FROM_ADDRESS:-}'
       - 'GF_SMTP_FROM_NAME=${GF_SMTP_FROM_NAME:-}'
-
-      # Grafana 12 Drilldown apps are shipped as plugins.
-      - GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,victoriametrics-metrics-datasource,grafana-metricsdrilldown-app
-      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource,victoriametrics-metrics-datasource
-
-      # disable local login for admin user and basic auth   
-      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}
-      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}
+      - 'GF_PLUGINS_PREINSTALL=victoriametrics-logs-datasource,victoriametrics-metrics-datasource,grafana-metricsdrilldown-app'
+      - 'GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=victoriametrics-logs-datasource,victoriametrics-metrics-datasource'
+      - 'GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-}'
+      - 'GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-}'
       - GF_AUTH_DISABLE_LOGIN_FORM=true
       - GF_AUTH_BASIC_ENABLED=false
       - GF_AUTH_ANONYMOUS_ENABLED=false
-
-      # enable login via Keycloak OIDC
-      - GF_AUTH_GENERIC_OAUTH_ENABLED=${GF_AUTH_GENERIC_OAUTH_ENABLED:-true}
-      - GF_AUTH_GENERIC_OAUTH_SCOPES=openid,email,profile
+      - 'GF_AUTH_GENERIC_OAUTH_ENABLED=${GF_AUTH_GENERIC_OAUTH_ENABLED:-true}'
+      - 'GF_AUTH_GENERIC_OAUTH_SCOPES=openid,email,profile'
       - GF_AUTH_GENERIC_OAUTH_NAME=Keycloak
       - GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP=true
       - GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH=Admin
-      - KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}
-      - KEYCLOAK_REALM_NAME=${KEYCLOAK_REALM_NAME:-}
+      - 'KEYCLOAK_PROVIDER_DOMAIN=${KEYCLOAK_PROVIDER_DOMAIN:-}'
+      - 'KEYCLOAK_REALM_NAME=${KEYCLOAK_REALM_NAME:-}'
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_ID=${GF_AUTH_GENERIC_OAUTH_CLIENT_ID:-}'
       - 'GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET=${GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:-}'
       - 'GF_AUTH_GENERIC_OAUTH_AUTH_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/auth'
       - 'GF_AUTH_GENERIC_OAUTH_TOKEN_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/token'
       - 'GF_AUTH_GENERIC_OAUTH_API_URL=${KEYCLOAK_PROVIDER_DOMAIN:-}/realms/${KEYCLOAK_REALM_NAME:-}/protocol/openid-connect/userinfo'
-      - GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-}
+      - 'GF_SERVER_ROOT_URL=${GF_SERVER_ROOT_URL:-}'
     volumes:
       - '/data/coolify/services/grafana/grafana-data:/var/lib/grafana'
       - '/data/coolify/services/grafana/provisioning:/etc/grafana/provisioning:ro'
@@ -181,6 +146,8 @@ services:
     depends_on:
       - victorialogs
       - victoriametrics
+    networks:
+      - coolify
     healthcheck:
       test:
         - CMD-SHELL
@@ -192,8 +159,10 @@ services:
   vector:
     image: 'timberio/vector:0.53.0-alpine'
     container_name: vector
-    command: [ "--config", "/etc/vector/vector.toml" ]
-    user: "0:0"
+    command:
+      - '--config'
+      - /etc/vector/vector.toml
+    user: '0:0'
     volumes:
       - '/data/coolify/services/vector/vector.toml:/etc/vector/vector.toml:ro'
       - '/data/coolify/services/geoip/GeoLite2-City.mmdb:/data/coolify/services/geoip/GeoLite2-City.mmdb:ro'
@@ -202,6 +171,8 @@ services:
       - victorialogs
       - victoriametrics
     restart: unless-stopped
+    networks:
+      - coolify
     healthcheck:
       test:
         - CMD-SHELL
@@ -214,7 +185,6 @@ volumes:
   vl-data: null
   grafana-data: null
   vector-config: null
-
 networks:
   coolify:
     external: true
