@@ -217,5 +217,6 @@ auth-access.json
 compose-extra.yaml
 celery-by-task.json
 celery-overview.json
+flask-dashboard.json
 
 tools/*
