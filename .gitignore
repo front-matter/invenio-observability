@@ -215,5 +215,7 @@ postgres-dashboard.json
 opensearch-dashboard.json
 auth-access.json
 compose-extra.yaml
+celery-by-task.json
+celery-overview.json
 
 tools/*
