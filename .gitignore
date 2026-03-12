@@ -213,3 +213,5 @@ node-exporter-full.json
 keycloak-dashboard.json
 auth-access.json
 compose-extra.yaml
+
+tools/*
