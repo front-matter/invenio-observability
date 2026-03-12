@@ -46,6 +46,7 @@ services:
       - '8429'
     environment:
       - 'KEYCLOAK_METRICS_TARGET=${KEYCLOAK_METRICS_TARGET:-keycloak:9000}'
+      - 'OPENSEARCH_EXPORTER_TARGET=${OPENSEARCH_EXPORTER_TARGET:-opensearch-exporter:9114}'
     volumes:
       - '/data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro'
     command:
