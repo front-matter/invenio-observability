@@ -212,6 +212,7 @@ redis-dashboard.json
 node-exporter-full.json
 keycloak-dashboard.json
 postgres-dashboard.json
+opensearch-dashboard.json
 auth-access.json
 compose-extra.yaml
 
