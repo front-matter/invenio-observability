@@ -81,7 +81,17 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "title": "Clear Search",
+      "url": "/d/service-health/service-health?${__url_time_range}&var-app=${app}&var-search=",
+      "type": "link",
+      "icon": "external link",
+      "tooltip": "Reset the search filter",
+      "targetBlank": false,
+      "tags": []
+    }
+  ],
   "panels": [
     {
       "id": 12,
