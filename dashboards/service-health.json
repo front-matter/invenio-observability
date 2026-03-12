@@ -87,7 +87,7 @@
       "id": 12,
       "type": "stat",
       "title": "Web",
-      "description": "Total log entries for Web in selected time window",
+      "description": "InvenioRDM HTTP request rate (req/s)",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -95,13 +95,13 @@
         "y": 0
       },
       "datasource": {
-        "type": "victoriametrics-logs-datasource",
-        "uid": "victorialogs"
+        "type": "prometheus",
+        "uid": "victoriametrics"
       },
       "options": {
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -109,7 +109,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center"
       },
       "fieldConfig": {
@@ -126,12 +126,12 @@
               },
               {
                 "color": "green",
-                "value": 1
+                "value": 0.001
               }
             ]
           },
           "mappings": [],
-          "unit": "short",
+          "unit": "reqps",
           "noValue": "0"
         },
         "overrides": []
@@ -139,12 +139,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "victorialogs"
+            "type": "prometheus",
+            "uid": "victoriametrics"
           },
-          "editorMode": "code",
-          "expr": "service:inveniordm | stats count() as requests",
-          "queryType": "instant",
+          "expr": "sum(rate(flask_http_request_total{job=\"inveniordm\",environment=\"production\"}[$__rate_interval]))",
+          "legendFormat": "",
           "refId": "A"
         }
       ]
@@ -153,7 +152,7 @@
       "id": 13,
       "type": "stat",
       "title": "Worker",
-      "description": "Total log entries for Worker in selected time window",
+      "description": "Celery tasks succeeded rate (tasks/s)",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -161,13 +160,13 @@
         "y": 0
       },
       "datasource": {
-        "type": "victoriametrics-logs-datasource",
-        "uid": "victorialogs"
+        "type": "prometheus",
+        "uid": "victoriametrics"
       },
       "options": {
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -175,7 +174,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center"
       },
       "fieldConfig": {
@@ -192,12 +191,12 @@
               },
               {
                 "color": "green",
-                "value": 1
+                "value": 0.001
               }
             ]
           },
           "mappings": [],
-          "unit": "short",
+          "unit": "reqps",
           "noValue": "0"
         },
         "overrides": []
@@ -205,12 +204,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "victorialogs"
+            "type": "prometheus",
+            "uid": "victoriametrics"
           },
-          "editorMode": "code",
-          "expr": "service:inveniordmworker | stats count() as requests",
-          "queryType": "instant",
+          "expr": "sum(rate(celery_task_succeeded_total{namespace=\"celery\"}[$__rate_interval]))",
+          "legendFormat": "",
           "refId": "A"
         }
       ]
@@ -219,7 +217,7 @@
       "id": 1,
       "type": "stat",
       "title": "Postgres",
-      "description": "Postgres transactions per second (commits + rollbacks)",
+      "description": "Postgres transactions per second (commits + rollbacks) \u2014 Ubicloud production",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -274,8 +272,8 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "sum by (environment) (rate(pg_stat_database_xact_commit{environment=~\"$environment\", environment!=\"\", job=\"postgres\"}[$__interval]) + rate(pg_stat_database_xact_rollback{environment=~\"$environment\", environment!=\"\", job=\"postgres\"}[$__interval]))",
-          "legendFormat": "{{environment}}",
+          "expr": "sum(rate(pg_stat_database_xact_commit{ubicloud_resource_role=\"primary\", job=\"postgres\"}[$__interval]) + rate(pg_stat_database_xact_rollback{ubicloud_resource_role=\"primary\", job=\"postgres\"}[$__interval]))",
+          "legendFormat": "",
           "refId": "A"
         }
       ]
@@ -284,7 +282,7 @@
       "id": 2,
       "type": "stat",
       "title": "Opensearch",
-      "description": "Total log entries for Opensearch in selected time window",
+      "description": "OpenSearch queries per second",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -292,13 +290,13 @@
         "y": 0
       },
       "datasource": {
-        "type": "victoriametrics-logs-datasource",
-        "uid": "victorialogs"
+        "type": "prometheus",
+        "uid": "victoriametrics"
       },
       "options": {
         "reduceOptions": {
           "calcs": [
-            "sum"
+            "lastNotNull"
           ],
           "fields": "",
           "values": false
@@ -306,7 +304,7 @@
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
-        "graphMode": "none",
+        "graphMode": "area",
         "justifyMode": "center"
       },
       "fieldConfig": {
@@ -318,17 +316,13 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
-                "value": null
-              },
-              {
                 "color": "green",
-                "value": 1
+                "value": null
               }
             ]
           },
           "mappings": [],
-          "unit": "short",
+          "unit": "reqps",
           "noValue": "0"
         },
         "overrides": []
@@ -336,12 +330,11 @@
       "targets": [
         {
           "datasource": {
-            "type": "victoriametrics-logs-datasource",
-            "uid": "victorialogs"
+            "type": "prometheus",
+            "uid": "victoriametrics"
           },
-          "editorMode": "code",
-          "expr": "service:opensearch | stats count() as entries",
-          "queryType": "instant",
+          "expr": "sum(rate(elasticsearch_indices_search_query_total{job=\"opensearch\"}[$__interval]))",
+          "legendFormat": "",
           "refId": "A"
         }
       ]
@@ -486,6 +479,198 @@
       ]
     },
     {
+      "id": 14,
+      "type": "gauge",
+      "title": "Web Errors",
+      "description": "Error log entries for the web service in the selected time range",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizHeight": 75,
+        "minVizWidth": 75
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "mappings": [],
+          "unit": "short",
+          "noValue": "0",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "service:inveniordm log_level:error | stats count() as errors",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 15,
+      "type": "gauge",
+      "title": "Worker Errors",
+      "description": "Error log entries vs total log entries for the worker service",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 4
+      },
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": ["lastNotNull"],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "minVizHeight": 75,
+        "minVizWidth": 75
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "mappings": [],
+          "unit": "short",
+          "noValue": "0",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "victoriametrics-logs-datasource",
+            "uid": "victorialogs"
+          },
+          "editorMode": "code",
+          "expr": "service:inveniordmworker log_level:error | stats count() as errors",
+          "queryType": "stats",
+          "refId": "A"
+        }
+      ],
+      "transformations": []
+    },
+    {
+      "id": 16,
+      "type": "state-timeline",
+      "title": "Status",
+      "description": "HTTP probe result for the /ping health endpoint",
+      "gridPos": {
+        "h": 4,
+        "w": 16,
+        "x": 8,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "options": {
+        "mergeValues": true,
+        "showValue": "auto",
+        "alignValue": "center",
+        "rowHeight": 0.9,
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": { "text": "Down", "color": "red", "index": 0 },
+                "1": { "text": "Ok", "color": "green", "index": 1 }
+              }
+            }
+          ],
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 0
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "expr": "probe_success{job=\"inveniordm\"}",
+          "legendFormat": "Web",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "id": 9,
       "type": "timeseries",
       "title": "CPU Usage",
@@ -493,7 +678,7 @@
         "h": 6,
         "w": 8,
         "x": 0,
-        "y": 4
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -538,7 +723,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])) * 100)",
+          "expr": "100 - (avg by(instance) (rate(node_cpu_seconds_total{job=\"node\",instance=\"node-exporter:9100\",mode=\"idle\"}[$__rate_interval])) * 100)",
           "legendFormat": "CPU {{instance}}",
           "refId": "A"
         }
@@ -552,7 +737,7 @@
         "h": 6,
         "w": 8,
         "x": 8,
-        "y": 4
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -614,7 +799,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100",
+          "expr": "(1 - (node_memory_MemAvailable_bytes{job=\"node\",instance=\"node-exporter:9100\"} / node_memory_MemTotal_bytes{job=\"node\",instance=\"node-exporter:9100\"})) * 100",
           "legendFormat": "Memory {{instance}}",
           "refId": "A"
         }
@@ -629,7 +814,7 @@
         "h": 6,
         "w": 8,
         "x": 16,
-        "y": 4
+        "y": 8
       },
       "datasource": {
         "type": "prometheus",
@@ -731,7 +916,7 @@
         "h": 11,
         "w": 24,
         "x": 0,
-        "y": 10
+        "y": 14
       },
       "datasource": {
         "type": "victoriametrics-logs-datasource",
@@ -754,7 +939,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "component:$app environment:~\"$environment\" (log_level:error OR log_level:warn) _msg:~\"$search\"",
+          "expr": "log_level:error service:~\"^$app$\" _msg:~\"$search\"",
           "queryType": "instant",
           "refId": "A"
         }
@@ -777,7 +962,7 @@
         "description": "Filter by service. Select one or 'All'.",
         "hide": 0,
         "includeAll": true,
-        "allValue": "*",
+        "allValue": ".*",
         "multi": false,
         "options": [
           {
@@ -787,8 +972,13 @@
           },
           {
             "selected": false,
-            "text": "postgres",
-            "value": "postgres"
+            "text": "web",
+            "value": "inveniordm"
+          },
+          {
+            "selected": false,
+            "text": "worker",
+            "value": "inveniordmworker"
           },
           {
             "selected": false,
@@ -804,56 +994,13 @@
             "selected": false,
             "text": "keycloak",
             "value": "keycloak"
-          },
-          {
-            "selected": false,
-            "text": "web",
-            "value": "web"
-          },
-          {
-            "selected": false,
-            "text": "worker",
-            "value": "worker"
           }
         ],
         "current": {
           "text": "All",
           "value": "$__all"
         },
-        "query": "postgres,opensearch,valkey,keycloak,web,worker"
-      },
-      {
-        "name": "environment",
-        "label": "Environment",
-        "type": "custom",
-        "description": "Filter by deployment environment.",
-        "hide": 0,
-        "includeAll": true,
-        "allValue": ".*",
-        "multi": false,
-        "options": [
-          {
-            "selected": false,
-            "text": "All",
-            "value": "$__all"
-          },
-          {
-            "selected": true,
-            "text": "production",
-            "value": "production"
-          },
-          {
-            "selected": false,
-            "text": "staging",
-            "value": "staging"
-          }
-        ],
-        "current": {
-          "selected": true,
-          "text": "production",
-          "value": "production"
-        },
-        "query": "production,staging"
+        "query": "web : inveniordm, worker : inveniordmworker, opensearch : opensearch, valkey : valkey, keycloak : keycloak"
       },
       {
         "name": "search",
@@ -886,5 +1033,5 @@
   "timezone": "",
   "title": "Service Health",
   "uid": "service-health",
-  "version": 1
+  "version": 30
 }

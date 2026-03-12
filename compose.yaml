@@ -183,6 +183,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+  blackbox-exporter:
+    image: 'prom/blackbox-exporter:latest'
+    expose:
+      - '9115'
+    networks:
+      - coolify
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget --spider --quiet http://127.0.0.1:9115/-/healthy 2>/dev/null || exit 1'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 volumes:
   vl-data: null
   grafana-data: null
