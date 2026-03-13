@@ -2,37 +2,38 @@ apiVersion: 1
 
 groups:
   - orgId: 1
-    name: invenio-log-alerts
+    name: invenio-status-alerts
     # NOTE: `folder` is a *folder UID*, not the display name.
     # Use the default folder UID so provisioning reliably succeeds.
     folder: general
     interval: 1m
     rules:
-      - uid: invenio_errors_any
-        title: "InvenioRDM: Error logs detected"
+      - uid: invenio_ping_down
+        title: "InvenioRDM: Web down"
         condition: B
-        for: 2m
+        for: 3m
         noDataState: OK
         execErrState: Error
         annotations:
-          summary: "Error/fatal/exception logs detected in VictoriaLogs"
-          description: 'Detected error-like log lines in the last 5 minutes. Query: app:* _msg:~"(?i)(error|exception|traceback|fatal|panic)" | stats count() as hits'
+          summary: "Web monitor is down"
+          description: 'monitor_status for monitor_name="InvenioRDM" has been 0 for 3 consecutive evaluations.'
         labels:
-          severity: warning
-          source: victorialogs
+          severity: critical
+          source: prometheus
         data:
           - refId: A
-            datasourceUid: victorialogs
+            datasourceUid: victoriametrics
             relativeTimeRange:
-              from: 300
+              from: 180
               to: 0
             model:
               datasource:
-                type: victoriametrics-logs-datasource
-                uid: victorialogs
+                type: prometheus
+                uid: victoriametrics
               editorMode: code
-              expr: 'app:* _msg:~"(?i)(error|exception|traceback|fatal|panic)" | stats count() as hits'
-              queryType: stats
+              expr: monitor_status{job="front-matter-status",monitor_name="InvenioRDM"}
+              instant: true
+              range: false
               refId: A
           - refId: B
             datasourceUid: __expr__
@@ -48,7 +49,7 @@ groups:
                     type: last
                     params: []
                   evaluator:
-                    type: gt
+                    type: eq
                     params:
                       - 0
                   operator:

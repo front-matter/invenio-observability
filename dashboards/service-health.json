@@ -618,7 +618,7 @@
       "id": 16,
       "type": "state-timeline",
       "title": "Status",
-      "description": "HTTP probe result for the /ping health endpoint",
+      "description": "Current status from Uptime Kuma for Web",
       "gridPos": {
         "h": 4,
         "w": 12,
@@ -678,7 +678,7 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "probe_success{job=\"inveniordm\"}",
+          "expr": "monitor_status{job=\"front-matter-status\",monitor_name=\"InvenioRDM\"}",
           "legendFormat": "Web",
           "refId": "A"
         }
@@ -688,7 +688,7 @@
       "id": 17,
       "type": "stat",
       "title": "Uptime",
-      "description": "Uptime percentage for the /ping health endpoint over the past 30 days",
+      "description": "Uptime percentage for Web over the past 30 days",
       "gridPos": {
         "h": 4,
         "w": 4,
@@ -748,8 +748,8 @@
             "type": "prometheus",
             "uid": "victoriametrics"
           },
-          "expr": "avg_over_time(probe_success{job=\"inveniordm\"}[30d]) * 100",
-          "legendFormat": "",
+          "expr": "monitor_uptime_ratio{job=\"front-matter-status\",monitor_name=\"InvenioRDM\",window=\"30d\"} * 100",
+          "legendFormat": "Web",
           "refId": "A"
         }
       ]

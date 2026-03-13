@@ -95,6 +95,35 @@ scrape_configs:
       - targets:
           - "http://%{INVENIO_METRICS_TARGET}/ping"
 
+  - job_name: inveniordm_status
+    # Protected endpoint on status.front-matter.de.
+    # STATUS_METRICS_TARGET is monitored by status.front-matter.de,
+    # and exposed there as Prometheus metrics.
+    # - STATUS_METRICS_API_KEY
+    basic_auth:
+      # vmagent requires non-empty basic_auth.username.
+      # Uptime Kuma accepts arbitrary username with API key as password.
+      username: "api"
+      password: "%{STATUS_METRICS_API_KEY}"
+    metrics_path: /metrics
+    scheme: https
+    relabel_configs:
+      - target_label: namespace
+        replacement: status
+      - target_label: job
+        replacement: front-matter-status
+      - target_label: environment
+        replacement: production
+    metric_relabel_configs:
+      - source_labels: [monitor_name]
+        regex: ^Rogue Scholar$
+        target_label: monitor_name
+        replacement: InvenioRDM
+        action: replace
+    static_configs:
+      - targets:
+          - status.front-matter.de
+
   - job_name: celery
     relabel_configs:
       - target_label: namespace
