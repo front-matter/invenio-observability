@@ -32,6 +32,10 @@ scrape_configs:
           - redis-exporter:9121
 
   - job_name: postgres
+    # Optional Basic Auth for protected Prometheus endpoints.
+    basic_auth:
+      username: "%{PROMETHEUS_USERNAME}"
+      password: "%{PROMETHEUS_PASSWORD}"
     relabel_configs:
       - target_label: namespace
         replacement: postgres
@@ -39,6 +43,11 @@ scrape_configs:
         replacement: postgres-exporter:9187
       - target_label: environment
         replacement: staging
+    metric_relabel_configs:
+      # Ubicloud-pushed postgres metrics → production
+      - if: '{ubicloud_resource_id!=""}'
+        target_label: environment
+        replacement: production
     static_configs:
       - targets:
           - postgres-exporter:9187
@@ -97,8 +106,8 @@ scrape_configs:
 
   - job_name: inveniordm_status
     # Protected endpoint on status.front-matter.de.
-    # STATUS_METRICS_TARGET is monitored by status.front-matter.de,
-    # and exposed there as Prometheus metrics.
+    # Scraped target is fixed to status.front-matter.de.
+    # STATUS_METRICS_TARGET selects which monitor_name value to rewrite.
     # - STATUS_METRICS_API_KEY
     basic_auth:
       # vmagent requires non-empty basic_auth.username.
@@ -116,10 +125,13 @@ scrape_configs:
         replacement: production
     metric_relabel_configs:
       - source_labels: [monitor_name]
-        regex: ^Rogue Scholar$
+        regex: "%{STATUS_METRICS_TARGET}"
         target_label: monitor_name
         replacement: InvenioRDM
         action: replace
+      - source_labels: [monitor_name]
+        regex: InvenioRDM
+        action: keep
     static_configs:
       - targets:
           - status.front-matter.de

@@ -83,6 +83,38 @@ Import:
 2. Dashboard JSON hochladen
 3. Wenn Grafana nach einer Datasource fragt, **VictoriaMetrics** auswählen
 
+## Prometheus Push API credentials
+
+If your Prometheus Push API endpoint is protected with Basic Auth, configure credentials via environment variables and reference them from `vmagent.yaml`.
+
+Recommended environment variables:
+
+- `PROMETHEUS_USERNAME`
+- `PROMETHEUS_PASSWORD`
+
+Example in `vmagent.yaml`:
+
+```yaml
+  - job_name: postgres
+    scheme: https
+    basic_auth:
+      username: "%{PROMETHEUS_USERNAME}"
+      password: "%{PROMETHEUS_PASSWORD}"
+```
+
+Example in `compose.yaml` (service `vmagent`):
+
+```yaml
+environment:
+  - 'PROMETHEUS_USERNAME=${PROMETHEUS_USERNAME:-}'
+  - 'PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD:-}'
+```
+
+Notes:
+
+- Set these values in your deployment secrets (for example, Coolify), not in the repository.
+- If authentication is not required, leave both variables empty and omit `basic_auth`.
+
 ## Log labels and levels
 
 - `vector.toml` extracts `service`, `app` and `environment` from Docker labels. In some environments (e.g. Coolify), labels are exposed as `.label` instead of `.container_labels`.
@@ -134,27 +166,6 @@ Notes:
 
 - Basic Auth will apply to the VictoriaLogs Web UI and its HTTP APIs on `:9428`.
 - Vector (Loki sink) and Grafana datasource will use the same credentials.
-
-## Protect VictoriaLogs Web UI (OIDC)
-
-VictoriaLogs doesn't support OIDC natively. If you want OIDC (e.g. via Keycloak), put an auth proxy in front of VictoriaLogs.
-
-This repo includes an `oauth2-proxy` service in [compose.yaml](compose.yaml) that can front VictoriaLogs using Keycloak OIDC.
-
-Important notes:
-
-- Expose **only** `oauth2-proxy` publicly (via `SERVICE_FQDN_OAUTH2PROXY_4180`). Do not expose VictoriaLogs directly.
-- When using `oauth2-proxy`, keep VictoriaLogs Basic Auth disabled (leave `VICTORIALOGS_HTTPAUTH_USERNAME` empty), unless you also configure `oauth2-proxy` to authenticate to the upstream.
-
-You must set these environment variables for `oauth2-proxy` (names in compose are examples; adapt to your setup):
-
-- `OAUTH2_PROXY_OIDC_ISSUER_URL` (Keycloak realm issuer URL)
-- `OAUTH2_PROXY_CLIENT_ID`
-- `OAUTH2_PROXY_CLIENT_SECRET`
-- `OAUTH2_PROXY_REDIRECT_URL` (must match the client config in Keycloak)
-- `OAUTH2_PROXY_COOKIE_SECRET` (required; generate a strong secret)
-- `OAUTH2_PROXY_COOKIE_DOMAINS`
-- `OAUTH2_PROXY_EMAIL_DOMAINS`
 
 
 ## Alerting: errors in logs
