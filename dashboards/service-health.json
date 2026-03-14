@@ -1023,7 +1023,7 @@
             "uid": "victorialogs"
           },
           "editorMode": "code",
-          "expr": "log_level:error service:~\"^$app$\" _msg:~\"$search\" !environment:\"staging\"",
+          "expr": "(log_level:error service:~\"^$app$\" _msg:~\"$search\" environment:\"production\") or (log_level:error service:~\"^$app$\" _msg:~\"$search\" environment:\"staging\")",
           "queryType": "instant",
           "refId": "A"
         }
@@ -1117,5 +1117,5 @@
   "timezone": "",
   "title": "Service Health",
   "uid": "service-health",
-  "version": 38
+  "version": 39
 }

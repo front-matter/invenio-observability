@@ -20,6 +20,8 @@ groups:
         labels:
           severity: critical
           source: prometheus
+        notification_settings:
+          receiver: Front Matter
         data:
           - refId: A
             datasourceUid: victoriametrics

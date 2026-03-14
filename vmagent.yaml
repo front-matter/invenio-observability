@@ -77,8 +77,6 @@ scrape_configs:
           [__meta_docker_container_label_com_docker_compose_service]
         regex: inveniordm
         action: keep
-      - target_label: __address__
-        replacement: "%{INVENIO_METRICS_TARGET}"
       - source_labels: [__meta_docker_container_label_coolify_environmentName]
         target_label: environment
       - target_label: job
