@@ -54,6 +54,7 @@ services:
       - 'PROMETHEUS_PASSWORD=${PROMETHEUS_PASSWORD:-}'
     volumes:
       - '/data/coolify/services/vmagent/vmagent.yaml:/etc/vmagent/vmagent.yaml:ro'
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
     command:
       - '-promscrape.config=/etc/vmagent/vmagent.yaml'
       - '-remoteWrite.url=http://victoriametrics:8428/api/v1/write'

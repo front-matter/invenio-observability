@@ -3,18 +3,25 @@ global:
 
 scrape_configs:
   - job_name: keycloak
-    # Target is configured via KEYCLOAK_METRICS_TARGET env var on the vmagent container
+    # Derive environment label from the running Coolify container label.
     metrics_path: /metrics
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
     relabel_configs:
+      - source_labels:
+          [__meta_docker_container_label_com_docker_compose_service]
+        regex: keycloak
+        action: keep
+      - target_label: __address__
+        replacement: "%{KEYCLOAK_METRICS_TARGET}"
+      - source_labels: [__meta_docker_container_label_coolify_environmentName]
+        target_label: environment
       - target_label: namespace
         replacement: keycloak
       - target_label: pod
         replacement: keycloak
       - target_label: container
         replacement: keycloak
-    static_configs:
-      - targets:
-          - "%{KEYCLOAK_METRICS_TARGET}"
 
   - job_name: node
     static_configs:
@@ -36,38 +43,48 @@ scrape_configs:
     basic_auth:
       username: "%{PROMETHEUS_USERNAME}"
       password: "%{PROMETHEUS_PASSWORD}"
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
     relabel_configs:
+      - source_labels:
+          [__meta_docker_container_label_com_docker_compose_service]
+        regex: postgres-exporter
+        action: keep
+      - target_label: __address__
+        replacement: postgres-exporter:9187
+      - source_labels: [__meta_docker_container_label_coolify_environmentName]
+        target_label: environment
       - target_label: namespace
         replacement: postgres
       - target_label: instance
         replacement: postgres-exporter:9187
-      - target_label: environment
-        replacement: staging
     metric_relabel_configs:
       # Ubicloud-pushed postgres metrics → production
       - if: '{ubicloud_resource_id!=""}'
         target_label: environment
         replacement: production
-    static_configs:
-      - targets:
-          - postgres-exporter:9187
 
   - job_name: inveniordm
     # Scrapes the InvenioRDM prometheus-flask-exporter metrics endpoint.
-    # Set INVENIO_METRICS_TARGET (e.g. inveniordm-*:5000)
-    # in Coolify UI.
+    # Set INVENIO_METRICS_TARGET (e.g. inveniordm-*:5000) in Coolify UI.
+    # Derive environment label from the running Coolify container label.
     metrics_path: /api/metrics
     scheme: http
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
     relabel_configs:
+      - source_labels:
+          [__meta_docker_container_label_com_docker_compose_service]
+        regex: inveniordm
+        action: keep
+      - target_label: __address__
+        replacement: "%{INVENIO_METRICS_TARGET}"
+      - source_labels: [__meta_docker_container_label_coolify_environmentName]
+        target_label: environment
       - target_label: job
         replacement: inveniordm
       - target_label: namespace
         replacement: inveniordm
-      - target_label: environment
-        replacement: production
-    static_configs:
-      - targets:
-          - "%{INVENIO_METRICS_TARGET}"
 
   - job_name: opensearch
     relabel_configs:
@@ -137,9 +154,17 @@ scrape_configs:
           - status.front-matter.de
 
   - job_name: celery
+    # Derive environment label from the running Coolify container label.
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
     relabel_configs:
+      - source_labels:
+          [__meta_docker_container_label_com_docker_compose_service]
+        regex: celery-exporter
+        action: keep
+      - target_label: __address__
+        replacement: "%{CELERY_EXPORTER_TARGET}"
+      - source_labels: [__meta_docker_container_label_coolify_environmentName]
+        target_label: environment
       - target_label: namespace
         replacement: celery
-    static_configs:
-      - targets:
-          - "%{CELERY_EXPORTER_TARGET}"
