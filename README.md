@@ -65,23 +65,72 @@ Notes:
 
 ## Grafana dashboards (Keycloak metrics)
 
-Dieses Repository enthält zusätzlich zwei importierbare Keycloak-Metrics-Dashboards (PromQL), basierend auf `keycloak/keycloak-grafana-dashboard`:
+This repository also includes two importable Keycloak metrics dashboards (PromQL), based on `keycloak/keycloak-grafana-dashboard`:
 
 - `dashboards/keycloak-capacity-planning-dashboard.json`
 - `dashboards/keycloak-troubleshooting-dashboard.json`
 
-Voraussetzungen:
+Prerequisites:
 
-- Keycloak stellt Metriken im Prometheus-Format bereit (bei `front-matter/keycloak-invenio` typischerweise `http://<host-or-service>:9000/metrics`).
-- Diese Compose-Definition nutzt **VictoriaMetrics** als Metrics-Backend und **vmagent** zum Scrapen (siehe [compose.yaml](compose.yaml)).
-- Die vmagent-Scrape-Konfiguration wird in [compose.yaml](compose.yaml) beim Container-Start generiert.
-- Optional kannst du das Scrape-Target über die Env-Var `KEYCLOAK_METRICS_TARGET` setzen (Default: `keycloak:9000`).
+- Keycloak exposes metrics in Prometheus format (for `front-matter/keycloak-invenio`, typically `http://<host-or-service>:9000/metrics`).
+- This Compose setup uses **VictoriaMetrics** as the metrics backend and **vmagent** for scraping (see [compose.yaml](compose.yaml)).
+- The vmagent scrape configuration is generated from [vmagent.yaml](vmagent.yaml).
+- Optionally, set the scrape target via env var `KEYCLOAK_METRICS_TARGET` (default: `keycloak:9000`).
 
 Import:
 
-1. In Grafana: **Dashboards** → **New** → **Import**
-2. Dashboard JSON hochladen
-3. Wenn Grafana nach einer Datasource fragt, **VictoriaMetrics** auswählen
+1. In Grafana: **Dashboards** -> **New** -> **Import**
+2. Upload the dashboard JSON file
+3. When Grafana asks for a datasource, select **VictoriaMetrics**
+
+## Operations: deploy updates by Docker context
+
+This repository is used against multiple remote Docker contexts:
+
+- `<observability-context>` (observability + Grafana)
+- `<uptime-context>` (Uptime Kuma)
+
+### Deploy `vmagent.yaml`
+
+To an observability server:
+
+```bash
+scp vmagent.yaml root@<server-host>:/data/coolify/services/vmagent/vmagent.yaml
+vm=$(docker --context <observability-context> ps --format '{{.Names}}' | grep '^vmagent-' | head -n1)
+docker --context <observability-context> restart "$vm"
+```
+
+Validation:
+
+```bash
+docker --context <observability-context> exec "$vm" sh -lc 'wget -qO- http://127.0.0.1:8429/targets' | sed -n '/job=inveniordm (/,/job=inveniordm_probe (/p'
+```
+
+### Deploy `service-health.json`
+
+To an observability server:
+
+```bash
+scp dashboards/service-health.json root@<server-host>:/data/coolify/services/grafana/provisioning/dashboards/service-health.json
+gf=$(docker --context <observability-context> ps --format '{{.Names}}' | grep '^grafana' | head -n1)
+docker --context <observability-context> restart "$gf"
+```
+
+Health check:
+
+```bash
+docker --context <observability-context> exec "$gf" sh -lc 'wget -qO- http://127.0.0.1:3000/api/health'
+```
+
+### Deploy `statuspage.html` to Uptime Kuma
+
+Uptime Kuma serves uploaded files from `/app/data/upload`.
+
+```bash
+k=$(docker --context <uptime-context> ps --format '{{.Names}}' | grep -Ei 'uptime|kuma' | head -n1)
+docker --context <uptime-context> cp statuspage.html "$k":/app/data/upload/statuspage.html
+curl -I https://status.front-matter.de/upload/statuspage.html
+```
 
 ## Prometheus Push API credentials
 

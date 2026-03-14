@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Status</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f7; color: #1a1a18; min-height: 100vh; }
+  .status-page { max-width: 760px; margin: 0 auto; padding: 2rem 1rem; }
+  .page-header { margin-bottom: 2rem; }
+  .page-title { font-size: 22px; font-weight: 500; color: #1a1a18; margin: 0 0 4px; }
+  .page-subtitle { font-size: 14px; color: #6b6b68; margin: 0; }
+  .overall-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 12px; }
+  .badge-ok { background: #EAF3DE; color: #3B6D11; }
+  .badge-incident { background: #FAECE7; color: #993C1D; }
+  .badge-degraded { background: #FAEEDA; color: #854F0B; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot-ok { background: #639922; }
+  .dot-incident { background: #D85A30; }
+  .dot-degraded { background: #BA7517; }
+  .group-label { font-size: 12px; font-weight: 500; color: #6b6b68; text-transform: uppercase; letter-spacing: 0.05em; margin: 2rem 0 0.75rem; }
+  .monitor-card { background: #ffffff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 8px; }
+  .monitor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .monitor-name { font-size: 14px; font-weight: 500; color: #1a1a18; }
+  .monitor-meta { display: flex; align-items: center; gap: 10px; }
+  .uptime-pct { font-size: 13px; color: #6b6b68; }
+  .status-pill { font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .pill-up { background: #EAF3DE; color: #3B6D11; }
+  .pill-down { background: #FCEBEB; color: #A32D2D; }
+  .pill-degraded { background: #FAEEDA; color: #854F0B; }
+  .pill-nodata { background: #F1EFE8; color: #5F5E5A; }
+  .bars-row { display: flex; gap: 2px; align-items: flex-end; }
+  .bar { flex: 1; height: 28px; border-radius: 2px; cursor: pointer; position: relative; }
+  .bar-up { background: #97C459; }
+  .bar-down { background: #E24B4A; }
+  .bar-degraded { background: #EF9F27; }
+  .bar-nodata { background: #e8e8e4; border: 0.5px solid #d3d1c7; }
+  .bars-footer { display: flex; justify-content: space-between; margin-top: 5px; }
+  .bars-footer span { font-size: 11px; color: #9b9b97; }
+  .legend { display: flex; gap: 16px; margin-top: 2rem; padding-top: 1rem; border-top: 0.5px solid rgba(0,0,0,0.1); flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #6b6b68; }
+  .legend-box { width: 10px; height: 10px; border-radius: 2px; }
+  .tooltip { position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%); background: #ffffff; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 5px 8px; font-size: 11px; white-space: nowrap; color: #1a1a18; z-index: 10; pointer-events: none; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .bar:hover .tooltip { display: block; }
+  .config-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 1.5rem; padding: 10px 14px; background: #f1efe8; border-radius: 8px; flex-wrap: wrap; }
+  .config-bar input { flex: 1; min-width: 140px; font-size: 13px; background: #ffffff; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; padding: 6px 10px; color: #1a1a18; }
+  .config-bar label { font-size: 12px; color: #6b6b68; white-space: nowrap; }
+  .config-bar button { font-size: 13px; padding: 6px 14px; background: #ffffff; border: 0.5px solid rgba(0,0,0,0.2); border-radius: 8px; cursor: pointer; color: #1a1a18; white-space: nowrap; }
+  .config-bar button:hover { background: #e8e8e4; }
+  .footer { margin-top: 3rem; padding-top: 1rem; border-top: 0.5px solid rgba(0,0,0,0.1); font-size: 12px; color: #9b9b97; text-align: center; }
+  @media (max-width: 480px) {
+    .monitor-header { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .bar { height: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="status-page">
+  <div class="page-header">
+    <p class="page-title" id="page-title">System Status</p>
+    <p class="page-subtitle">Last updated: <span id="last-updated">—</span></p>
+    <div class="overall-badge badge-ok" id="overall-badge">
+      <span class="dot dot-ok" id="overall-dot"></span>
+      <span id="overall-text">All systems operational</span>
+    </div>
+  </div>
+
+  <div class="config-bar">
+    <label>Kuma URL</label>
+    <input id="kuma-url" type="text" placeholder="https://status.front-matter.de" value="" />
+    <label>Slug</label>
+    <input id="kuma-slug" type="text" placeholder="default" value="default" style="flex:0.4; min-width:80px;" />
+    <button onclick="loadFromKuma()">Load</button>
+  </div>
+
+  <div id="monitors-container"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-box" style="background:#97C459;"></div> Operational</div>
+    <div class="legend-item"><div class="legend-box" style="background:#EF9F27;"></div> Degraded</div>
+    <div class="legend-item"><div class="legend-box" style="background:#E24B4A;"></div> Outage</div>
+    <div class="legend-item"><div class="legend-box" style="background:#e8e8e4; border:0.5px solid #d3d1c7;"></div> No data</div>
+  </div>
+
+  <div class="footer">Powered by Uptime Kuma &mdash; 90-day uptime history</div>
+</div>
+
+<script>
+const DAYS = 90;
+
+function generateMockData(name, uptime, recentDown) {
+  const days = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    let status = 'up';
+    if (recentDown && i < 3 && i > 1) status = 'down';
+    else if (Math.random() < (1 - uptime / 100)) status = Math.random() < 0.5 ? 'degraded' : 'down';
+    days.push({ date: d, status });
+  }
+  const upDays = days.filter(d => d.status === 'up').length;
+  const pct = ((upDays / DAYS) * 100).toFixed(2);
+  return { name, days, pct, current: recentDown ? 'down' : 'up' };
+}
+
+const MOCK_GROUPS = [
+  {
+    label: 'Web',
+    monitors: [
+      generateMockData('rogue-scholar.org', 99.8, false),
+      generateMockData('api.rogue-scholar.org', 99.5, false),
+    ]
+  },
+  {
+    label: 'Infrastructure',
+    monitors: [
+      generateMockData('Postgres', 100, false),
+      generateMockData('Valkey', 99.9, false),
+    ]
+  }
+];
+
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function barClass(status) {
+  if (status === 'up') return 'bar bar-up';
+  if (status === 'down') return 'bar bar-down';
+  if (status === 'degraded') return 'bar bar-degraded';
+  return 'bar bar-nodata';
+}
+
+function pillClass(status) {
+  if (status === 'up') return 'status-pill pill-up';
+  if (status === 'down') return 'status-pill pill-down';
+  if (status === 'degraded') return 'status-pill pill-degraded';
+  return 'status-pill pill-nodata';
+}
+
+function pillText(status) {
+  if (status === 'up') return 'Operational';
+  if (status === 'down') return 'Outage';
+  if (status === 'degraded') return 'Degraded';
+  return 'No data';
+}
+
+function renderMonitor(m) {
+  const barsHtml = m.days.map(d => {
+    const label = d.status === 'up' ? 'operational' : d.status;
+    const tip = `${fmtDate(d.date)}: ${label}`;
+    return `<div class="${barClass(d.status)}"><span class="tooltip">${tip}</span></div>`;
+  }).join('');
+
+  return `
+  <div class="monitor-card">
+    <div class="monitor-header">
+      <span class="monitor-name">${m.name}</span>
+      <div class="monitor-meta">
+        <span class="uptime-pct">${m.pct}% uptime</span>
+        <span class="${pillClass(m.current)}">${pillText(m.current)}</span>
+      </div>
+    </div>
+    <div class="bars-row">${barsHtml}</div>
+    <div class="bars-footer">
+      <span>${DAYS} days ago</span>
+      <span>Today</span>
+    </div>
+  </div>`;
+}
+
+function renderAll(groups) {
+  const container = document.getElementById('monitors-container');
+  let html = '';
+  let anyDown = false, anyDegraded = false;
+  groups.forEach(g => {
+    html += `<div class="group-label">${g.label}</div>`;
+    g.monitors.forEach(m => {
+      if (m.current === 'down') anyDown = true;
+      if (m.current === 'degraded') anyDegraded = true;
+      html += renderMonitor(m);
+    });
+  });
+  container.innerHTML = html;
+
+  const badge = document.getElementById('overall-badge');
+  const dot = document.getElementById('overall-dot');
+  const text = document.getElementById('overall-text');
+  badge.className = 'overall-badge ' + (anyDown ? 'badge-incident' : anyDegraded ? 'badge-degraded' : 'badge-ok');
+  dot.className = 'dot ' + (anyDown ? 'dot-incident' : anyDegraded ? 'dot-degraded' : 'dot-ok');
+  text.textContent = anyDown ? 'Partial outage' : anyDegraded ? 'Degraded performance' : 'All systems operational';
+  document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+}
+
+function buildDays(beats) {
+  const byDay = {};
+  beats.forEach(b => {
+    const d = new Date(b.time);
+    const key = d.toISOString().slice(0, 10);
+    if (!byDay[key]) byDay[key] = { up: 0, down: 0 };
+    if (b.status === 1) byDay[key].up++;
+    else byDay[key].down++;
+  });
+  const days = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    let status = 'nodata';
+    if (byDay[key]) {
+      const total = byDay[key].up + byDay[key].down;
+      const pct = byDay[key].up / total;
+      status = pct >= 0.99 ? 'up' : pct >= 0.5 ? 'degraded' : 'down';
+    }
+    days.push({ date: d, status });
+  }
+  return days;
+}
+
+async function loadFromKuma() {
+  const url = document.getElementById('kuma-url').value.replace(/\/$/, '');
+  const slug = document.getElementById('kuma-slug').value.trim() || 'default';
+  if (!url) { alert('Enter your Uptime Kuma URL first.'); return; }
+  try {
+    const [pageRes, hbRes] = await Promise.all([
+      fetch(`${url}/api/status-page/${slug}`),
+      fetch(`${url}/api/status-page/heartbeat/${slug}`)
+    ]);
+    if (!pageRes.ok || !hbRes.ok) throw new Error(`HTTP ${pageRes.status}`);
+    const page = await pageRes.json();
+    const hb = await hbRes.json();
+
+    if (page.config?.title) {
+      document.getElementById('page-title').textContent = page.config.title;
+      document.title = page.config.title;
+    }
+
+    const groups = (page.publicGroupList || []).map(g => ({
+      label: g.name,
+      monitors: g.monitorList.map(mon => {
+        const beats = hb.heartbeatList?.[mon.id] || [];
+        const days = buildDays(beats);
+        const upDays = days.filter(d => d.status === 'up').length;
+        const pct = ((upDays / DAYS) * 100).toFixed(2);
+        const last = beats.length > 0 ? beats[beats.length - 1] : null;
+        const current = last ? (last.status === 1 ? 'up' : 'down') : 'nodata';
+        return { name: mon.name, days, pct, current };
+      })
+    }));
+
+    renderAll(groups);
+  } catch (e) {
+    alert('Could not connect to Uptime Kuma: ' + e.message + '\n\nCheck the URL and make sure CORS is allowed from this origin.');
+  }
+}
+
+renderAll(MOCK_GROUPS);
+
+setInterval(() => {
+  const url = document.getElementById('kuma-url').value;
+  if (url) loadFromKuma();
+}, 60000);
+</script>
+</body>
+</html>
