@@ -188,6 +188,58 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+  glitchtip:
+    image: 'glitchtip/glitchtip:latest'
+    expose:
+      - '8000'
+    environment:
+      - 'DJANGO_SETTINGS_MODULE=glitchtip.settings'
+      - 'SECRET_KEY=${GLITCHTIP_SECRET_KEY:-change-me}'
+      - 'PORT=8000'
+      - 'DATABASE_URL=${GLITCHTIP_DATABASE_URL:-}'
+      - 'REDIS_URL=${GLITCHTIP_REDIS_URL:-}'
+      - 'EMAIL_URL=${GLITCHTIP_EMAIL_URL:-}'
+      - 'DEFAULT_FROM_EMAIL=${GLITCHTIP_DEFAULT_FROM_EMAIL:-}'
+      - 'GLITCHTIP_DOMAIN=${GLITCHTIP_DOMAIN:-}'
+      - 'ALLOWED_HOSTS=${GLITCHTIP_ALLOWED_HOSTS:-*}'
+      - 'CSRF_TRUSTED_ORIGINS=${GLITCHTIP_CSRF_TRUSTED_ORIGINS:-}'
+      - ENABLE_ORGANIZATION_CREATION=false
+      - ENABLE_OPEN_USER_REGISTRATION=false
+      - 'ENABLE_USER_REGISTRATION=${GLITCHTIP_ENABLE_USER_REGISTRATION:-false}'
+      - 'ENABLE_SOCIAL_APPS_USER_REGISTRATION=${GLITCHTIP_ENABLE_SOCIAL_APPS_USER_REGISTRATION:-false}'
+    command:
+      - sh
+      - -c
+      - ./bin/run-migrate.sh && ./bin/run-web.sh
+    volumes:
+      - '/data/coolify/services/glitchtip/uploads:/code/uploads'
+    restart: unless-stopped
+    networks:
+      - coolify
+  glitchtip-worker:
+    image: 'glitchtip/glitchtip:latest'
+    environment:
+      - 'DJANGO_SETTINGS_MODULE=glitchtip.settings'
+      - 'SECRET_KEY=${GLITCHTIP_SECRET_KEY:-change-me}'
+      - 'DATABASE_URL=${GLITCHTIP_DATABASE_URL:-}'
+      - 'REDIS_URL=${GLITCHTIP_REDIS_URL:-}'
+      - 'EMAIL_URL=${GLITCHTIP_EMAIL_URL:-}'
+      - 'DEFAULT_FROM_EMAIL=${GLITCHTIP_DEFAULT_FROM_EMAIL:-}'
+      - 'GLITCHTIP_DOMAIN=${GLITCHTIP_DOMAIN:-}'
+      - 'ALLOWED_HOSTS=${GLITCHTIP_ALLOWED_HOSTS:-*}'
+      - ENABLE_ORGANIZATION_CREATION=false
+      - ENABLE_OPEN_USER_REGISTRATION=false
+      - 'CSRF_TRUSTED_ORIGINS=${GLITCHTIP_CSRF_TRUSTED_ORIGINS:-}'
+      - 'ENABLE_USER_REGISTRATION=${GLITCHTIP_ENABLE_USER_REGISTRATION:-false}'
+      - 'ENABLE_SOCIAL_APPS_USER_REGISTRATION=${GLITCHTIP_ENABLE_SOCIAL_APPS_USER_REGISTRATION:-false}'
+    command: ./bin/run-celery-with-beat.sh
+    volumes:
+      - '/data/coolify/services/glitchtip/uploads:/code/uploads'
+    restart: unless-stopped
+    depends_on:
+      - glitchtip
+    networks:
+      - coolify
   blackbox-exporter:
     image: 'prom/blackbox-exporter:latest'
     expose:
